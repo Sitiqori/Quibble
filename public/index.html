@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quibble — Math Bubble Battle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+/* ─── CSS Variables ─── */
+:root {
+  --bg: #0d0d1a;
+  --surface: #161628;
+  --surface2: #1e1e38;
+  --border: rgba(255,255,255,0.08);
+  --text: #f0f0ff;
+  --text-muted: #8888bb;
+  --accent: #6c63ff;
+  --accent2: #ff6584;
+  --green: #4ecca3;
+  --red: #ff4d6d;
+  --yellow: #ffd166;
+  --cyan: #00d4ff;
+  --bubble-correct: #4ecca3;
+  --bubble-wrong: #ff4d6d;
+  --bubble-empty: #555577;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --glow-green: 0 0 20px rgba(78,204,163,0.6);
+  --glow-red: 0 0 20px rgba(255,77,109,0.6);
+  --glow-purple: 0 0 30px rgba(108,99,255,0.4);
+}
+
+/* ─── Reset ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Animated starfield bg */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(108,99,255,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(255,101,132,0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(0,212,255,0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Screens ─── */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: opacity 0.4s, transform 0.4s;
+}
+.screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.95);
+}
+
+/* ─── Home Screen ─── */
+#home-screen {
+  flex-direction: column;
+  gap: 0;
+}
+
+.logo-wrap {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.logo {
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(56px, 10vw, 96px);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 50%, var(--green) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 30px rgba(108,99,255,0.6));
+  letter-spacing: 2px;
+  animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.logo-sub {
+  font-size: 14px;
+  color: var(--text-muted);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+.home-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 40px;
+  width: min(420px, 92vw);
+  box-shadow: var(--shadow), 0 0 60px rgba(108,99,255,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+input[type=text] {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: 'Nunito', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 14px 18px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+}
+input[type=text]::placeholder { color: var(--text-muted); font-weight: 600; }
+input[type=text]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.2);
+}
+
+.btn {
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  padding: 14px 24px;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  letter-spacing: 0.5px;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(0); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  color: white;
+  box-shadow: 0 4px 20px rgba(108,99,255,0.4);
+}
+.btn-primary:hover { box-shadow: 0 6px 28px rgba(108,99,255,0.6); }
+
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1.5px solid var(--border);
+}
+.btn-secondary:hover { border-color: var(--accent); }
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--red), #c0392b);
+  color: white;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, var(--green), #27ae60);
+  color: #0a2a1f;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.join-row {
+  display: flex;
+  gap: 10px;
+}
+.join-row input { flex: 1; text-transform: uppercase; letter-spacing: 3px; }
+.join-row .btn { white-space: nowrap; }
+
+/* ─── Lobby Screen ─── */
+#lobby-screen {
+  flex-direction: column;
+  gap: 0;
+  align-items: center;
+  padding: 20px;
+}
+
+.lobby-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.room-code-display {
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(40px, 8vw, 64px);
+  letter-spacing: 8px;
+  background: linear-gradient(135deg, var(--cyan), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.room-code-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.lobby-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: min(800px, 96vw);
+  max-height: calc(100vh - 280px);
+}
+
+.lobby-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.player-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.player-name { font-weight: 700; font-size: 15px; }
+.host-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: rgba(108,99,255,0.2);
+  color: var(--accent);
+  border: 1px solid rgba(108,99,255,0.3);
+  border-radius: 6px;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+.lobby-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.waiting-text {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.7); }
+}
+
+/* ─── Game Screen ─── */
+#game-screen {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  background: linear-gradient(180deg, #0a0a1a 0%, #050510 100%);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Question Bar */
+.question-bar {
+  position: relative;
+  z-index: 50;
+  padding: 16px 20px 12px;
+  background: rgba(13,13,26,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.round-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.question-text {
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(22px, 4vw, 36px);
+  text-align: center;
+  color: white;
+  text-shadow: 0 0 20px rgba(108,99,255,0.6);
+  line-height: 1.2;
+}
+
+.timer-bar-wrap {
+  width: 100%;
+  max-width: 500px;
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.timer-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+  border-radius: 3px;
+  transition: width 0.5s linear, background 0.5s;
+}
+
+/* Game Layout */
+.game-layout {
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  height: calc(100vh - 110px);
+}
+
+/* Bubble Arena */
+.bubble-arena {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  cursor: crosshair;
+  height: 100%;
+}
+
+/* Danger zone line */
+.danger-line {
+  position: absolute;
+  top: 80px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(255,77,109,0.3);
+  z-index: 5;
+}
+.danger-line::before {
+  content: '☠ DANGER ZONE';
+  position: absolute;
+  right: 12px;
+  top: -20px;
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(255,77,109,0.5);
+  letter-spacing: 2px;
+}
+
+/* Bubble styles */
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(12px, 2vw, 18px);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s, box-shadow 0.2s;
+  will-change: transform;
+  z-index: 10;
+  text-align: center;
+  padding: 4px;
+  word-break: break-word;
+  line-height: 1.1;
+}
+.bubble:hover { transform: scale(1.1) !important; }
+.bubble:active { transform: scale(0.9) !important; }
+
+.bubble.correct {
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), var(--bubble-correct));
+  color: #0a2a1f;
+  box-shadow: 0 4px 20px rgba(78,204,163,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+  border: 2px solid rgba(255,255,255,0.3);
+}
+.bubble.wrong {
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.2), var(--bubble-wrong));
+  color: white;
+  box-shadow: 0 4px 20px rgba(255,77,109,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+  border: 2px solid rgba(255,255,255,0.2);
+}
+.bubble.empty {
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.1), var(--bubble-empty));
+  color: var(--text-muted);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+  border: 2px solid rgba(255,255,255,0.1);
+}
+
+.bubble.popping {
+  animation: pop 0.3s ease forwards;
+}
+@keyframes pop {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+.bubble.wrong-flash {
+  animation: wrongFlash 0.5s ease;
+}
+@keyframes wrongFlash {
+  0% { box-shadow: 0 0 0 0 rgba(255,77,109,0.8); }
+  50% { box-shadow: 0 0 40px 20px rgba(255,77,109,0.6); }
+  100% { box-shadow: 0 4px 20px rgba(255,77,109,0.4); }
+}
+
+/* Score popup */
+.score-popup {
+  position: absolute;
+  font-family: 'Fredoka One', cursive;
+  font-size: 28px;
+  pointer-events: none;
+  z-index: 100;
+  animation: scoreFloat 1s ease forwards;
+}
+@keyframes scoreFloat {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-80px) scale(1.3); }
+}
+
+/* Sidebar */
+.game-sidebar {
+  width: 220px;
+  height: 100%;
+  flex-shrink: 0;
+  background: rgba(22,22,40,0.9);
+  backdrop-filter: blur(8px);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 20;
+}
+
+.sidebar-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* My stats */
+.my-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+.stat-label { color: var(--text-muted); font-weight: 600; }
+.stat-value { font-weight: 800; font-size: 18px; color: var(--cyan); }
+
+.level-bar-wrap {
+  width: 100%;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.level-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease, background 0.5s;
+  background: linear-gradient(90deg, var(--green), var(--yellow));
+}
+.level-bar.danger {
+  background: linear-gradient(90deg, var(--yellow), var(--red));
+}
+.level-bar.critical {
+  background: var(--red);
+  animation: barPulse 0.5s ease-in-out infinite;
+}
+@keyframes barPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Leaderboard */
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  flex: 1;
+  padding: 16px;
+}
+
+.lb-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  transition: background 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.lb-item.me {
+  background: rgba(108,99,255,0.15);
+  border: 1px solid rgba(108,99,255,0.3);
+}
+.lb-item.eliminated {
+  opacity: 0.4;
+}
+
+.lb-rank {
+  font-family: 'Fredoka One', cursive;
+  font-size: 14px;
+  color: var(--text-muted);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.lb-rank.gold { color: var(--yellow); }
+.lb-rank.silver { color: #ccc; }
+.lb-rank.bronze { color: #cd7f32; }
+
+.lb-name {
+  font-size: 13px;
+  font-weight: 700;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lb-score {
+  font-family: 'Fredoka One', cursive;
+  font-size: 14px;
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+
+.lb-status {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.lb-level-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  transition: width 0.5s ease, background 0.5s;
+}
+
+/* Eliminated overlay */
+.eliminated-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255,77,109,0.15);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  pointer-events: none;
+}
+.eliminated-overlay.hidden { display: none; }
+.elim-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 64px;
+  color: var(--red);
+  text-shadow: 0 0 40px rgba(255,77,109,0.8);
+  animation: shake 0.5s ease;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-10px); }
+  40% { transform: translateX(10px); }
+  60% { transform: translateX(-8px); }
+  80% { transform: translateX(8px); }
+}
+.elim-sub {
+  font-size: 18px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* Round Starting overlay */
+.round-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.round-overlay.visible { opacity: 1; }
+
+.round-number {
+  font-family: 'Fredoka One', cursive;
+  font-size: 96px;
+  background: linear-gradient(135deg, var(--accent), var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: zoomIn 0.5s ease;
+}
+@keyframes zoomIn {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.round-label {
+  font-size: 20px;
+  color: var(--text-muted);
+  font-weight: 800;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+/* ─── End Screen ─── */
+#end-screen {
+  flex-direction: column;
+  gap: 24px;
+  padding: 20px;
+}
+
+.winner-display {
+  text-align: center;
+}
+
+.winner-trophy {
+  font-size: 80px;
+  animation: trophy 1s ease infinite alternate;
+}
+@keyframes trophy {
+  from { transform: scale(1) rotate(-5deg); }
+  to { transform: scale(1.1) rotate(5deg); }
+}
+
+.winner-label {
+  font-size: 12px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 800;
+  margin-top: 8px;
+}
+
+.winner-name {
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(32px, 6vw, 56px);
+  background: linear-gradient(135deg, var(--yellow), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.final-leaderboard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  width: min(480px, 92vw);
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.final-lb-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+.final-lb-item:first-child {
+  background: rgba(255,209,102,0.1);
+  border: 1px solid rgba(255,209,102,0.3);
+}
+
+.final-rank {
+  font-family: 'Fredoka One', cursive;
+  font-size: 24px;
+  width: 32px;
+  text-align: center;
+}
+.final-name { flex: 1; font-weight: 700; font-size: 16px; }
+.final-score {
+  font-family: 'Fredoka One', cursive;
+  font-size: 20px;
+  color: var(--cyan);
+}
+.final-status { font-size: 18px; }
+
+/* Notification toast */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 700;
+  font-size: 14px;
+  z-index: 1000;
+  transition: transform 0.3s ease;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.success { border-color: var(--green); color: var(--green); }
+.toast.error { border-color: var(--red); color: var(--red); }
+.toast.info { border-color: var(--accent); color: var(--accent); }
+
+/* Confetti canvas */
+#confetti-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 500;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 600px) {
+  .game-sidebar { width: 160px; }
+  .lb-score { display: none; }
+  .lobby-layout { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════ HOME SCREEN -->
+<div class="screen" id="home-screen">
+  <div class="logo-wrap">
+    <div class="logo">🫧 Quibble</div>
+    <div class="logo-sub">Math Bubble Battle</div>
+  </div>
+  <div class="home-card">
+    <div class="input-group">
+      <label class="section-title">Your Name</label>
+      <input type="text" id="player-name" placeholder="Enter your name..." maxlength="16">
+    </div>
+    <button class="btn btn-primary" onclick="createRoom()">✦ Create Room</button>
+    <div class="divider">OR</div>
+    <div class="join-row">
+      <input type="text" id="room-code-input" placeholder="ENTER CODE" maxlength="5">
+      <button class="btn btn-secondary" onclick="joinRoom()">Join →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ LOBBY SCREEN -->
+<div class="screen hidden" id="lobby-screen">
+  <div class="lobby-header">
+    <div class="room-code-label">Room Code</div>
+    <div class="room-code-display" id="lobby-code">—</div>
+    <div style="font-size:13px; color:var(--text-muted); margin-top:6px; font-weight:600;">Share this code with friends</div>
+  </div>
+  <div class="lobby-layout">
+    <div class="lobby-card">
+      <div class="section-title">Players (<span id="player-count">0</span>)</div>
+      <div class="players-list" id="players-list"></div>
+    </div>
+    <div class="lobby-card" style="display:flex; flex-direction:column;">
+      <div class="section-title">Game Settings</div>
+      <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:16px; margin-top:16px;">
+        <div style="background:var(--surface2); border-radius:12px; padding:16px; font-size:13px; line-height:1.8; color:var(--text-muted);">
+          🫧 Pop bubbles with correct answers<br>
+          ✅ Correct: <span style="color:var(--green)">+100 pts</span><br>
+          ❌ Wrong: <span style="color:var(--red)">-30 pts & +danger</span><br>
+          ☠️ Screen fills up → eliminated!<br>
+          🏆 Last player standing wins
+        </div>
+        <div class="lobby-actions" id="lobby-actions"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ GAME SCREEN -->
+<div class="screen hidden" id="game-screen">
+  <!-- Question bar -->
+  <div class="question-bar">
+    <div class="round-badge">Round <span id="round-num">1</span></div>
+    <div class="question-text" id="question-display">Get ready...</div>
+    <div class="timer-bar-wrap">
+      <div class="timer-bar" id="timer-bar" style="width:100%"></div>
+    </div>
+  </div>
+
+  <!-- Round overlay -->
+  <div class="round-overlay" id="round-overlay">
+    <div class="round-label">Round</div>
+    <div class="round-number" id="round-overlay-num">1</div>
+    <div style="color:var(--text-muted);font-weight:700;font-size:16px;">Get ready!</div>
+  </div>
+
+  <!-- Eliminated overlay -->
+  <div class="eliminated-overlay hidden" id="eliminated-overlay">
+    <div class="elim-title">☠️ ELIMINATED!</div>
+    <div class="elim-sub">Watch the battle continue...</div>
+  </div>
+
+  <div class="game-layout">
+    <!-- Bubble Arena -->
+    <div class="bubble-arena" id="bubble-arena">
+      <div class="danger-line" id="danger-line"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="game-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">My Stats</div>
+        <div class="my-stats">
+          <div class="stat-row">
+            <span class="stat-label">Score</span>
+            <span class="stat-value" id="my-score">0</span>
+          </div>
+          <div class="stat-row" style="margin-top:4px;">
+            <span class="stat-label" style="font-size:11px;">Bubble Level</span>
+            <span style="font-size:11px; font-weight:700; color:var(--red)" id="bubble-pct">0%</span>
+          </div>
+          <div class="level-bar-wrap">
+            <div class="level-bar" id="my-level-bar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-label" style="padding:16px 16px 8px;">Leaderboard</div>
+      <div class="leaderboard-list" id="leaderboard-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ END SCREEN -->
+<div class="screen hidden" id="end-screen">
+  <div class="winner-display">
+    <div class="winner-trophy">🏆</div>
+    <div class="winner-label">Winner</div>
+    <div class="winner-name" id="winner-name">—</div>
+  </div>
+  <div class="final-leaderboard">
+    <div class="section-title" style="margin-bottom:16px;">Final Standings</div>
+    <div id="final-leaderboard-list"></div>
+  </div>
+  <button class="btn btn-primary" onclick="goHome()" style="width:100%; max-width:480px;">Play Again 🔄</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+const socket = io();
+let myId = null;
+let myName = '';
+let myRoom = '';
+let isHost = false;
+let isAlive = true;
+let myScore = 0;
+let myBubbleLevel = 0;
+
+// Bubble simulation
+const bubbles = new Map(); // id -> { el, x, y, vy, type, answer, width, height }
+let bubbleInterval = null;
+let animFrame = null;
+let questionActive = false;
+let currentQuestion = null;
+let timerInterval = null;
+let timerSeconds = 30;
+
+const AVATAR_COLORS = ['#6c63ff','#ff6584','#4ecca3','#ffd166','#00d4ff','#ff9f43','#a29bfe','#fd79a8'];
+
+// ═══════════════════════════════════════════════════════════════════
+// SCREENS
+// ═══════════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════════
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// HOME ACTIONS
+// ═══════════════════════════════════════════════════════════════════
+function getPlayerName() {
+  const name = document.getElementById('player-name').value.trim();
+  if (!name) { showToast('Enter your name first!', 'error'); return null; }
+  return name;
+}
+
+function createRoom() {
+  const name = getPlayerName();
+  if (!name) return;
+  myName = name;
+  socket.emit('create_room', { playerName: name });
+}
+
+function joinRoom() {
+  const name = getPlayerName();
+  if (!name) return;
+  const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+  if (!code) { showToast('Enter a room code!', 'error'); return; }
+  myName = name;
+  socket.emit('join_room', { code, playerName: name });
+}
+
+function goHome() {
+  stopGame();
+  showScreen('home-screen');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LOBBY
+// ═══════════════════════════════════════════════════════════════════
+function renderLobby(state) {
+  document.getElementById('lobby-code').textContent = state.code;
+  document.getElementById('player-count').textContent = state.players.length;
+
+  const list = document.getElementById('players-list');
+  list.innerHTML = '';
+  state.players.forEach((p, i) => {
+    if (p.disconnected) return;
+    const div = document.createElement('div');
+    div.className = 'player-item';
+    const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    div.innerHTML = `
+      <div class="player-avatar" style="background:${color}20; color:${color}; border:2px solid ${color}40">
+        ${p.name[0].toUpperCase()}
+      </div>
+      <div class="player-name">${escapeHtml(p.name)}${p.id === myId ? ' (You)' : ''}</div>
+      ${p.id === state.host ? '<div class="host-badge">Host</div>' : ''}
+    `;
+    list.appendChild(div);
+  });
+
+  const actions = document.getElementById('lobby-actions');
+  actions.innerHTML = '';
+  if (isHost) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-success';
+    btn.textContent = '▶ Start Game!';
+    btn.onclick = () => socket.emit('start_game', { code: myRoom });
+    actions.appendChild(btn);
+  } else {
+    actions.innerHTML = '<div class="waiting-text"><div class="pulse-dot"></div> Waiting for host to start...</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BUBBLE SYSTEM
+// ═══════════════════════════════════════════════════════════════════
+let bubbleIdCounter = 0;
+const arena = () => document.getElementById('bubble-arena');
+
+function getBubbleSizeForText(text) {
+  const len = String(text).length;
+  if (len <= 2) return 64;
+  if (len <= 4) return 72;
+  if (len <= 6) return 84;
+  return 96;
+}
+
+function spawnBubble({ type, answer, id }) {
+  if (!isAlive) return;
+  const a = arena();
+  if (!a) return;
+  const aW = a.clientWidth || window.innerWidth - 220;
+  const aH = a.clientHeight || (window.innerHeight - 110);
+
+  const size = getBubbleSizeForText(answer || '');
+  const el = document.createElement('div');
+  el.className = `bubble ${type}`;
+  el.style.width = el.style.height = size + 'px';
+  el.style.fontSize = (size > 80 ? 13 : 16) + 'px';
+  el.textContent = answer || '';
+
+  const x = 20 + Math.random() * Math.max(60, aW - size - 20);
+  // Start just below the visible bottom
+  const startY = aH + size + Math.random() * 80;
+  el.style.left = x + 'px';
+  el.style.top = startY + 'px';
+
+  // Speed: random between 0.6 and 1.4 px/frame (faster so they're visible)
+  const vy = -(0.6 + Math.random() * 0.8);
+
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleBubbleClick(id, type, answer, el);
+  });
+
+  a.appendChild(el);
+  bubbles.set(id, { el, x, y: startY, vy, type, answer, size, settled: false });
+}
+
+function handleBubbleClick(id, type, answer, el) {
+  if (!isAlive || !questionActive) return;
+  if (!bubbles.has(id)) return; // already popped
+  const correct = type === 'correct';
+  const b = bubbles.get(id);
+  el.classList.add('popping');
+  bubbles.delete(id); // remove immediately to prevent double-click
+
+  // Show score popup
+  const popup = document.createElement('div');
+  popup.className = 'score-popup';
+  popup.textContent = correct ? '+100' : '-30';
+  popup.style.color = correct ? 'var(--green)' : 'var(--red)';
+  popup.style.left = (b.x + b.size / 2) + 'px';
+  popup.style.top = (b.y) + 'px';
+  arena().appendChild(popup);
+  setTimeout(() => popup.remove(), 1000);
+
+  socket.emit('bubble_click', {
+    code: myRoom,
+    bubbleId: id,
+    answer,
+    isCorrect: correct
+  });
+
+  setTimeout(() => el.remove(), 300);
+
+  if (!correct) {
+    // Screen flash
+    const flash = document.createElement('div');
+    flash.style.cssText = 'position:fixed;inset:0;background:rgba(255,77,109,0.2);z-index:150;pointer-events:none;animation:fadeQuick 0.5s forwards';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 500);
+  }
+}
+
+function animateBubbles() {
+  const a = arena();
+  if (!a) { animFrame = requestAnimationFrame(animateBubbles); return; }
+  const dangerY = 80; // danger line Y position from top of arena
+  let settledCount = 0;
+
+  bubbles.forEach((b, id) => {
+    if (b.settled) {
+      settledCount++;
+      return;
+    }
+
+    b.y += b.vy; // vy is negative so bubble moves UP
+    b.el.style.top = b.y + 'px';
+
+    // Bubble top edge = b.y, bottom edge = b.y + b.size
+    // Settle when the TOP of the bubble hits or passes dangerY
+    if (b.y <= dangerY) {
+      b.settled = true;
+      b.y = dangerY;
+      b.el.style.top = dangerY + 'px';
+      settledCount++;
+    }
+  });
+
+  // Emit overflow pressure based on settled bubbles
+  if (settledCount > 0 && questionActive) {
+    socket.emit('bubble_overflow', { code: myRoom, amount: settledCount * 0.3 });
+  }
+
+  animFrame = requestAnimationFrame(animateBubbles);
+}
+
+function startBubbleSpawner(question) {
+  if (bubbleInterval) clearInterval(bubbleInterval);
+
+  const spawnSet = () => {
+    if (!questionActive) return;
+    // Spawn a batch of 3-6 bubbles
+    const count = 3 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => {
+        bubbleIdCounter++;
+        const roll = Math.random();
+        let type, answer;
+        if (roll < 0.25) {
+          type = 'correct';
+          answer = question.correct_answer;
+        } else if (roll < 0.55) {
+          const wrongs = question.wrong_answers;
+          type = 'wrong';
+          answer = wrongs[Math.floor(Math.random() * wrongs.length)];
+        } else {
+          type = 'empty';
+          answer = '';
+        }
+        spawnBubble({ type, answer, id: bubbleIdCounter });
+      }, i * 400);
+    }
+  };
+
+  spawnSet();
+  bubbleInterval = setInterval(spawnSet, 2500);
+}
+
+function clearBubbles() {
+  bubbles.forEach(b => b.el.remove());
+  bubbles.clear();
+  if (bubbleInterval) { clearInterval(bubbleInterval); bubbleInterval = null; }
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════════════════════════════════
+function startTimer(duration) {
+  if (timerInterval) clearInterval(timerInterval);
+  timerSeconds = duration / 1000;
+  const bar = document.getElementById('timer-bar');
+  const update = () => {
+    const pct = (timerSeconds / (duration / 1000)) * 100;
+    if (bar) {
+      bar.style.width = pct + '%';
+      if (pct < 30) bar.style.background = 'linear-gradient(90deg, var(--red), #ff6b6b)';
+      else if (pct < 60) bar.style.background = 'linear-gradient(90deg, var(--yellow), var(--green))';
+      else bar.style.background = 'linear-gradient(90deg, var(--green), var(--cyan))';
+    }
+    timerSeconds -= 0.5;
+    if (timerSeconds < 0) clearInterval(timerInterval);
+  };
+  update();
+  timerInterval = setInterval(update, 500);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LEADERBOARD
+// ═══════════════════════════════════════════════════════════════════
+function renderLeaderboard(data) {
+  const list = document.getElementById('leaderboard-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  data.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = `lb-item ${p.id === myId ? 'me' : ''} ${!p.alive ? 'eliminated' : ''}`;
+
+    const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+    const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+
+    const levelColor = p.bubbleLevel > 75 ? 'var(--red)' : p.bubbleLevel > 50 ? 'var(--yellow)' : 'var(--green)';
+
+    div.innerHTML = `
+      <span class="lb-rank ${rankClass}">${rankEmoji}</span>
+      <span class="lb-name">${escapeHtml(p.name)}</span>
+      <span class="lb-score">${p.score}</span>
+      <span class="lb-status">${p.alive ? '🟢' : '💀'}</span>
+      <div class="lb-level-fill" style="width:${p.bubbleLevel}%; background:${levelColor}"></div>
+    `;
+    list.appendChild(div);
+
+    // Update my stats
+    if (p.id === myId) {
+      myScore = p.score;
+      myBubbleLevel = p.bubbleLevel;
+      const scoreEl = document.getElementById('my-score');
+      const barEl = document.getElementById('my-level-bar');
+      const pctEl = document.getElementById('bubble-pct');
+      if (scoreEl) scoreEl.textContent = p.score;
+      if (pctEl) pctEl.textContent = Math.round(p.bubbleLevel) + '%';
+      if (barEl) {
+        barEl.style.width = p.bubbleLevel + '%';
+        barEl.className = 'level-bar' + (p.bubbleLevel > 80 ? ' critical' : p.bubbleLevel > 60 ? ' danger' : '');
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GAME STOP
+// ═══════════════════════════════════════════════════════════════════
+function stopGame() {
+  clearBubbles();
+  if (timerInterval) clearInterval(timerInterval);
+  questionActive = false;
+  isAlive = true;
+  myRoom = '';
+  myScore = 0;
+  myBubbleLevel = 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CONFETTI
+// ═══════════════════════════════════════════════════════════════════
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const particles = Array.from({ length: 120 }, () => ({
+    x: Math.random() * canvas.width,
+    y: -10,
+    w: 8 + Math.random() * 8,
+    h: 4 + Math.random() * 4,
+    color: ['#6c63ff','#ff6584','#4ecca3','#ffd166','#00d4ff'][Math.floor(Math.random()*5)],
+    vx: (Math.random() - 0.5) * 4,
+    vy: 2 + Math.random() * 4,
+    angle: Math.random() * Math.PI * 2,
+    av: (Math.random() - 0.5) * 0.2,
+  }));
+
+  let frame;
+  const draw = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let done = true;
+    particles.forEach(p => {
+      if (p.y < canvas.height + 20) done = false;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.angle += p.av;
+      p.vy += 0.05;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    });
+    if (!done) frame = requestAnimationFrame(draw);
+    else { ctx.clearRect(0,0,canvas.width,canvas.height); }
+  };
+  draw();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SOCKET EVENTS
+// ═══════════════════════════════════════════════════════════════════
+socket.on('connect', () => { myId = socket.id; });
+
+socket.on('room_created', ({ code, player }) => {
+  myRoom = code;
+  isHost = true;
+  showScreen('lobby-screen');
+  showToast(`Room created! Code: ${code}`, 'success');
+});
+
+socket.on('room_joined', ({ code }) => {
+  myRoom = code;
+  isHost = false;
+  showScreen('lobby-screen');
+  showToast('Joined room!', 'success');
+});
+
+socket.on('room_state', (state) => {
+  if (state.status === 'lobby') renderLobby(state);
+});
+
+socket.on('you_are_host', () => {
+  isHost = true;
+  showToast('You are now the host!', 'info');
+});
+
+socket.on('error', ({ message }) => {
+  showToast(message, 'error');
+});
+
+socket.on('game_started', () => {
+  isAlive = true;
+  clearBubbles();
+  showScreen('game-screen');
+  animateBubbles();
+});
+
+socket.on('round_starting', ({ round }) => {
+  clearBubbles();
+  questionActive = false;
+  currentQuestion = null;
+
+  const overlay = document.getElementById('round-overlay');
+  document.getElementById('round-overlay-num').textContent = round;
+  document.getElementById('round-num').textContent = round;
+  document.getElementById('question-display').textContent = 'Get ready...';
+  document.getElementById('timer-bar').style.width = '100%';
+
+  overlay.classList.add('visible');
+  setTimeout(() => overlay.classList.remove('visible'), 2800);
+});
+
+socket.on('new_question', ({ round, question, correct_answer, wrong_answers, equivalent_expressions, duration }) => {
+  currentQuestion = { question, correct_answer, wrong_answers, equivalent_expressions };
+  questionActive = true;
+
+  document.getElementById('round-num').textContent = round;
+  document.getElementById('question-display').textContent = question;
+  startTimer(duration);
+  startBubbleSpawner(currentQuestion);
+});
+
+socket.on('bubble_popped', ({ playerId, bubbleId, correct }) => {
+  // Visual feedback when others pop bubbles - subtle
+  if (playerId !== myId) {
+    // Could add other player effects here
+  }
+});
+
+socket.on('leaderboard_update', ({ leaderboard }) => {
+  renderLeaderboard(leaderboard);
+});
+
+socket.on('player_eliminated', ({ playerId, name, finalScore }) => {
+  if (playerId === myId) {
+    isAlive = false;
+    questionActive = false;
+    clearBubbles();
+    document.getElementById('eliminated-overlay').classList.remove('hidden');
+    showToast('You have been eliminated!', 'error');
+  } else {
+    showToast(`${name} was eliminated! 💀`, 'info');
+  }
+});
+
+socket.on('player_disconnected', ({ name }) => {
+  showToast(`${name} disconnected`, 'info');
+});
+
+socket.on('round_ended', ({ round }) => {
+  questionActive = false;
+  if (timerInterval) clearInterval(timerInterval);
+  clearBubbles();
+});
+
+socket.on('game_ended', ({ winner, leaderboard }) => {
+  stopGame();
+
+  document.getElementById('winner-name').textContent = winner ? winner.name : '—';
+
+  const finalList = document.getElementById('final-leaderboard-list');
+  finalList.innerHTML = '';
+  leaderboard.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'final-lb-item';
+    const medals = ['🥇','🥈','🥉'];
+    div.innerHTML = `
+      <div class="final-rank">${medals[i] || (i+1)}</div>
+      <div class="final-name">${escapeHtml(p.name)}${p.id === myId ? ' (You)' : ''}</div>
+      <div class="final-score">${p.score}</div>
+      <div class="final-status">${p.alive ? '🟢' : '💀'}</div>
+    `;
+    finalList.appendChild(div);
+  });
+
+  showScreen('end-screen');
+
+  if (winner && winner.id === myId) {
+    launchConfetti();
+    showToast('🏆 You won!', 'success');
+  } else {
+    showToast(`🏆 ${winner?.name || 'Nobody'} wins!`, 'info');
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Inject quick CSS animation for flash
+const style = document.createElement('style');
+style.textContent = '@keyframes fadeQuick { from{opacity:1} to{opacity:0} }';
+document.head.appendChild(style);
+
+// Enter key support
+document.getElementById('room-code-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') joinRoom();
+});
+document.getElementById('player-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const code = document.getElementById('room-code-input').value.trim();
+    if (code) joinRoom(); else createRoom();
+  }
+});
+</script>
+</body>
+</html>
