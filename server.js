@@ -14,6 +14,7 @@ app.use(express.json());
 
 // ─── State ────────────────────────────────────────────────────────────────────
 const rooms = {};
+const ROUNDS_PER_LEVEL = 5;
 
 function generateCode() {
   return Math.random().toString(36).substring(2, 7).toUpperCase();
@@ -134,6 +135,8 @@ io.on('connection', (socket) => {
 
     room.status = 'playing';
     room.round = 0;
+    room.level = 1;
+    room.roundInLevel = 0;
     // Reset players
     Object.values(room.players).forEach(p => {
       p.score = 0;
@@ -178,6 +181,22 @@ io.on('connection', (socket) => {
     emitLeaderboard(code);
   });
 
+  // Continue to next level (host only)
+  socket.on('continue_level', ({ code }) => {
+    const room = rooms[code];
+    if (!room || room.host !== socket.id) return;
+    if (room.status !== 'level_complete') return;
+    room.level += 1;
+    room.roundInLevel = 0;
+    room.status = 'playing';
+    // Reset bubble levels for all alive players
+    Object.values(room.players).forEach(p => {
+      if (p.alive) p.bubbleLevel = 0;
+    });
+    io.to(code).emit('level_started', { level: room.level });
+    startRound(code);
+  });
+
   // Disconnect
   socket.on('disconnect', () => {
     for (const code in rooms) {
@@ -211,7 +230,8 @@ async function startRound(code) {
   if (alivePlayers.length <= 1) return checkGameEnd(code);
 
   room.round += 1;
-  io.to(code).emit('round_starting', { round: room.round });
+  room.roundInLevel += 1;
+  io.to(code).emit('round_starting', { round: room.round, roundInLevel: room.roundInLevel, level: room.level, totalRoundsPerLevel: ROUNDS_PER_LEVEL });
 
   const question = await generateQuestion(room.round);
   room.currentQuestion = question;
@@ -221,6 +241,9 @@ async function startRound(code) {
     if (rooms[code]?.status !== 'playing') return;
     io.to(code).emit('new_question', {
       round: room.round,
+      roundInLevel: room.roundInLevel,
+      level: room.level,
+      totalRoundsPerLevel: ROUNDS_PER_LEVEL,
       question: question.question,
       correct_answer: question.correct_answer,
       wrong_answers: question.wrong_answers,
@@ -232,8 +255,22 @@ async function startRound(code) {
     room.questionTimer = setTimeout(async () => {
       if (!rooms[code] || rooms[code].status !== 'playing') return;
       io.to(code).emit('round_ended', { round: room.round });
-      await new Promise(r => setTimeout(r, 3000));
-      await startRound(code);
+      await new Promise(r => setTimeout(r, 2000));
+
+      // Check if level complete
+      if (rooms[code] && rooms[code].roundInLevel >= ROUNDS_PER_LEVEL) {
+        clearTimeout(rooms[code].questionTimer);
+        rooms[code].status = 'level_complete';
+        io.to(code).emit('level_complete', {
+          level: rooms[code].level,
+          nextLevel: rooms[code].level + 1,
+          leaderboard: Object.values(rooms[code].players)
+            .sort((a, b) => b.score - a.score)
+            .map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive }))
+        });
+      } else {
+        await startRound(code);
+      }
     }, 30000);
 
   }, 3000);

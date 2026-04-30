@@ -10,25 +10,25 @@
 <style>
 /* ─── CSS Variables ─── */
 :root {
-  --bg: #0d0d1a;
-  --surface: #161628;
-  --surface2: #1e1e38;
-  --border: rgba(255,255,255,0.08);
-  --text: #f0f0ff;
-  --text-muted: #8888bb;
-  --accent: #6c63ff;
+  --bg: #0f0a2e;
+  --surface: #1a1040;
+  --surface2: #231558;
+  --border: rgba(255,255,255,0.12);
+  --text: #ffffff;
+  --text-muted: #b8a8e8;
+  --accent: #a855f7;
   --accent2: #ff6584;
-  --green: #4ecca3;
+  --green: #22d3a5;
   --red: #ff4d6d;
-  --yellow: #ffd166;
-  --cyan: #00d4ff;
-  --bubble-correct: #4ecca3;
+  --yellow: #fbbf24;
+  --cyan: #22d3ee;
+  --bubble-correct: #22d3a5;
   --bubble-wrong: #ff4d6d;
-  --bubble-empty: #555577;
+  --bubble-empty: #4a3580;
   --shadow: 0 8px 32px rgba(0,0,0,0.4);
-  --glow-green: 0 0 20px rgba(78,204,163,0.6);
-  --glow-red: 0 0 20px rgba(255,77,109,0.6);
-  --glow-purple: 0 0 30px rgba(108,99,255,0.4);
+  --glow-green: 0 0 20px rgba(34,211,165,0.7);
+  --glow-red: 0 0 20px rgba(255,77,109,0.7);
+  --glow-purple: 0 0 30px rgba(168,85,247,0.5);
 }
 
 /* ─── Reset ─── */
@@ -36,22 +36,64 @@
 
 body {
   font-family: 'Nunito', sans-serif;
-  background: var(--bg);
+  background: #1a0a2e;
   color: var(--text);
   min-height: 100vh;
   overflow: hidden;
   position: relative;
 }
 
-/* Animated starfield bg */
+/* Multi-layer dynamic background - NOT flat dark blue */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 20% 20%, rgba(108,99,255,0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(255,101,132,0.1) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(0,212,255,0.05) 0%, transparent 70%);
+    radial-gradient(ellipse 60% 50% at 10% 10%, rgba(255,60,120,0.22) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 90% 5%, rgba(255,140,0,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 40% at 95% 90%, rgba(0,200,255,0.2) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 5% 95%, rgba(60,255,120,0.15) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 80% at 50% 50%, rgba(140,60,255,0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  animation: nebula 12s ease-in-out infinite alternate;
+}
+
+@keyframes nebula {
+  0% {
+    background:
+      radial-gradient(ellipse 60% 50% at 10% 10%, rgba(255,60,120,0.22) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 60% at 90% 5%, rgba(255,140,0,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 40% at 95% 90%, rgba(0,200,255,0.2) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 5% 95%, rgba(60,255,120,0.15) 0%, transparent 55%),
+      radial-gradient(ellipse 80% 80% at 50% 50%, rgba(140,60,255,0.12) 0%, transparent 70%);
+  }
+  100% {
+    background:
+      radial-gradient(ellipse 55% 55% at 15% 20%, rgba(220,50,255,0.2) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 10%, rgba(255,80,40,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse 65% 45% at 90% 85%, rgba(0,255,200,0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 55% 55% at 10% 90%, rgba(80,200,255,0.15) 0%, transparent 55%),
+      radial-gradient(ellipse 75% 75% at 55% 45%, rgba(255,80,180,0.1) 0%, transparent 70%);
+  }
+}
+
+/* Star dots overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 15% 25%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 10%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(2px 2px at 55% 40%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 15%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 55%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(2px 2px at 25% 70%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 80%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 90%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(2px 2px at 45% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 5% 50%, rgba(255,255,255,0.4) 0%, transparent 100%);
   pointer-events: none;
   z-index: 0;
 }
@@ -86,11 +128,11 @@ body::before {
 .logo {
   font-family: 'Fredoka One', cursive;
   font-size: clamp(56px, 10vw, 96px);
-  background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 50%, var(--green) 100%);
+  background: linear-gradient(135deg, #ff2d55 0%, #ff9500 25%, #ffcc00 50%, #34c759 75%, #007aff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 30px rgba(108,99,255,0.6));
+  filter: drop-shadow(0 0 30px rgba(255,100,100,0.5));
   letter-spacing: 2px;
   animation: logoFloat 3s ease-in-out infinite;
 }
@@ -345,7 +387,7 @@ input[type=text]:focus {
   flex-direction: column;
   align-items: stretch;
   padding: 0;
-  background: linear-gradient(180deg, #0a0a1a 0%, #050510 100%);
+  background: transparent;
   overflow: hidden;
   height: 100vh;
   width: 100vw;
@@ -356,14 +398,15 @@ input[type=text]:focus {
   position: relative;
   z-index: 50;
   padding: 16px 20px 12px;
-  background: rgba(13,13,26,0.95);
+  background: rgba(26,10,46,0.85);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(168,85,247,0.3);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  box-shadow: 0 2px 20px rgba(168,85,247,0.2);
 }
 
 .round-badge {
@@ -379,7 +422,7 @@ input[type=text]:focus {
   font-size: clamp(22px, 4vw, 36px);
   text-align: center;
   color: white;
-  text-shadow: 0 0 20px rgba(108,99,255,0.6);
+  text-shadow: 0 0 20px rgba(168,85,247,0.8), 0 0 40px rgba(34,211,238,0.4);
   line-height: 1.2;
 }
 
@@ -413,6 +456,7 @@ input[type=text]:focus {
   overflow: hidden;
   cursor: crosshair;
   height: 100%;
+  background: transparent;
 }
 
 /* Danger zone line */
@@ -454,24 +498,39 @@ input[type=text]:focus {
   padding: 4px;
   word-break: break-word;
   line-height: 1.1;
+  font-weight: 900;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
-.bubble:hover { transform: scale(1.1) !important; }
-.bubble:active { transform: scale(0.9) !important; }
+.bubble::after {
+  content: '';
+  position: absolute;
+  top: 10%;
+  left: 15%;
+  width: 40%;
+  height: 30%;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 100%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.bubble:hover { transform: scale(1.12) !important; filter: brightness(1.15); }
+.bubble:active { transform: scale(0.88) !important; }
 
-.bubble.correct  { color: #fff; border: 2px solid rgba(255,255,255,0.4); }
-.bubble.equivalent{ color: #fff; border: 2px solid rgba(255,255,255,0.4); }
-.bubble.wrong    { color: #fff; border: 2px solid rgba(255,255,255,0.25); }
-.bubble.empty    { color: rgba(255,255,255,0.4); border: 2px solid rgba(255,255,255,0.1); background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.05), #1a1a2e) !important; }
+.bubble.correct  { color: #fff; border: 2px solid rgba(255,255,255,0.5); }
+.bubble.equivalent{ color: #fff; border: 2px solid rgba(255,255,255,0.5); }
+.bubble.wrong    { color: #fff; border: 2px solid rgba(255,255,255,0.3); }
+.bubble.empty    { color: rgba(255,255,255,0.5); border: 2px solid rgba(255,255,255,0.15); background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1), #2a1a5e 70%) !important; box-shadow: 0 4px 15px rgba(100,80,200,0.3) !important; }
 
 /* Palette warna-warni untuk bubble — diterapkan via JS .color-N */
-.bubble.color-0  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #e63946); box-shadow: 0 4px 20px rgba(230,57,70,0.5); }
-.bubble.color-1  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #2a9d8f); box-shadow: 0 4px 20px rgba(42,157,143,0.5); }
-.bubble.color-2  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #e9c46a); box-shadow: 0 4px 20px rgba(233,196,106,0.5); color: #2a1f00 !important; }
-.bubble.color-3  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #f4a261); box-shadow: 0 4px 20px rgba(244,162,97,0.5); color: #2a1000 !important; }
-.bubble.color-4  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #6a4c93); box-shadow: 0 4px 20px rgba(106,76,147,0.5); }
-.bubble.color-5  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #1982c4); box-shadow: 0 4px 20px rgba(25,130,196,0.5); }
-.bubble.color-6  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #8ac926); box-shadow: 0 4px 20px rgba(138,201,38,0.5); color: #1a2a00 !important; }
-.bubble.color-7  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #ff595e); box-shadow: 0 4px 20px rgba(255,89,94,0.5); }
+.bubble.color-0  { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45) 0%, #ff2d55 60%, #cc0033 100%); box-shadow: 0 4px 25px rgba(255,45,85,0.7), inset 0 -3px 10px rgba(0,0,0,0.3); }
+.bubble.color-1  { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45) 0%, #00c9a7 60%, #007a66 100%); box-shadow: 0 4px 25px rgba(0,201,167,0.7), inset 0 -3px 10px rgba(0,0,0,0.3); }
+.bubble.color-2  { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5) 0%, #ffcc00 60%, #cc9900 100%); box-shadow: 0 4px 25px rgba(255,204,0,0.7), inset 0 -3px 10px rgba(0,0,0,0.3); color: #3a2a00 !important; }
+.bubble.color-3  { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45) 0%, #ff6b00 60%, #cc4400 100%); box-shadow: 0 4px 25px rgba(255,107,0,0.7), inset 0 -3px 10px rgba(0,0,0,0.3); }
+.bubble.color-4  { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45) 0%, #9b59b6 60%, #6c3483 100%); box-shadow: 0 4px 25px rgba(155,89,182,0.7), inset 0 -3px 10px rgba(0,0,0,0.3); }
+.bubble.color-5  { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45) 0%, #0080ff 60%, #0055cc 100%); box-shadow: 0 4px 25px rgba(0,128,255,0.7), inset 0 -3px 10px rgba(0,0,0,0.3); }
+.bubble.color-6  { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5) 0%, #44d900 60%, #2a8800 100%); box-shadow: 0 4px 25px rgba(68,217,0,0.7), inset 0 -3px 10px rgba(0,0,0,0.3); color: #0a2200 !important; }
+.bubble.color-7  { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45) 0%, #ff1493 60%, #cc0066 100%); box-shadow: 0 4px 25px rgba(255,20,147,0.7), inset 0 -3px 10px rgba(0,0,0,0.3); }
+.bubble.color-8  { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45) 0%, #00bfff 60%, #0080cc 100%); box-shadow: 0 4px 25px rgba(0,191,255,0.7), inset 0 -3px 10px rgba(0,0,0,0.3); }
+.bubble.color-9  { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5) 0%, #ffa500 60%, #cc7700 100%); box-shadow: 0 4px 25px rgba(255,165,0,0.7), inset 0 -3px 10px rgba(0,0,0,0.3); color: #2a1500 !important; }
 
 .bubble.popping {
   animation: pop 0.3s ease forwards;
@@ -510,13 +569,14 @@ input[type=text]:focus {
   width: 220px;
   height: 100%;
   flex-shrink: 0;
-  background: rgba(22,22,40,0.9);
-  backdrop-filter: blur(8px);
-  border-left: 1px solid var(--border);
+  background: rgba(15,10,46,0.88);
+  backdrop-filter: blur(12px);
+  border-left: 1px solid rgba(168,85,247,0.25);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 20;
+  box-shadow: -2px 0 20px rgba(168,85,247,0.15);
 }
 
 .sidebar-section {
@@ -792,6 +852,11 @@ input[type=text]:focus {
 }
 .final-status { font-size: 18px; }
 
+@keyframes vignetteFlicker {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.15); }
+}
+
 /* Notification toast */
 .toast {
   position: fixed;
@@ -887,7 +952,7 @@ input[type=text]:focus {
 <div class="screen hidden" id="game-screen">
   <!-- Question bar -->
   <div class="question-bar">
-    <div class="round-badge">Round <span id="round-num">1</span></div>
+    <div class="round-badge">Lv <span id="level-num">1</span> &nbsp;·&nbsp; Round <span id="round-num">1</span>/<span id="rounds-total">5</span></div>
     <div class="question-text" id="question-display">Get ready...</div>
     <div class="timer-bar-wrap">
       <div class="timer-bar" id="timer-bar" style="width:100%"></div>
@@ -901,6 +966,15 @@ input[type=text]:focus {
     <div style="color:var(--text-muted);font-weight:700;font-size:16px;">Get ready!</div>
   </div>
 
+  <!-- Level Complete overlay -->
+  <div class="round-overlay" id="level-complete-overlay" style="z-index:400; background:rgba(0,0,0,0.88);">
+    <div style="font-size:56px; margin-bottom:8px;">🏅</div>
+    <div style="font-family:'Fredoka One',cursive; font-size:40px; background:linear-gradient(135deg,var(--yellow),var(--accent)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:4px;">Level <span id="lc-level-num">1</span> Clear!</div>
+    <div style="color:var(--text-muted); font-weight:700; font-size:14px; margin-bottom:24px;">Lanjut ke Level <span id="lc-next-level">2</span>?</div>
+    <div id="lc-leaderboard" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:16px; min-width:260px; margin-bottom:20px;"></div>
+    <div id="lc-buttons" style="display:flex; gap:12px; flex-direction:column; width:260px;"></div>
+  </div>
+
   <!-- Eliminated overlay -->
   <div class="eliminated-overlay hidden" id="eliminated-overlay">
     <div class="elim-title">☠️ ELIMINATED!</div>
@@ -908,7 +982,15 @@ input[type=text]:focus {
   </div>
 
   <div class="game-layout">
-    <!-- Bubble Arena -->
+    <!-- Danger vignette overlay -->
+  <div id="danger-vignette" style="
+    position:fixed; inset:0; pointer-events:none; z-index:199; opacity:0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(255,30,50,0.85) 100%);
+    transition: opacity 0.4s ease;
+    animation: vignetteFlicker 0.8s ease-in-out infinite alternate;
+  "></div>
+
+  <!-- Bubble Arena -->
     <div class="bubble-arena" id="bubble-arena">
       <div class="danger-line" id="danger-line"></div>
     </div>
@@ -1166,33 +1248,24 @@ function spawnBubble({ type, answer, id }) {
   if (!a) return;
 
   const aW = a.clientWidth  || (window.innerWidth  - 220);
-  const aH = a.clientHeight || (window.innerHeight - 110);
   const size = getBubbleSizeForText(String(answer || ''));
 
   const el = document.createElement('div');
-  // Warna acak dari 8 palet (color-0..7) — selalu beda tiap bubble
-  const colorIdx = Math.floor(Math.random() * 8);
+  const colorIdx = Math.floor(Math.random() * 10);
   el.className = 'bubble ' + type + ' color-' + colorIdx;
   el.style.width  = size + 'px';
   el.style.height = size + 'px';
   el.style.fontSize = Math.max(11, Math.min(18, size * 0.3)) + 'px';
   el.textContent = String(answer || '○');
 
-  // Posisi X: bagi 5 slot berjarak, pilih slot berdasarkan id
-  const slotCount = 5;
-  const slotW     = (aW - size) / slotCount;
-  const slotIdx   = id % slotCount;
-  const x = slotIdx * slotW + (slotW - size) * 0.5 + (Math.random() - 0.5) * slotW * 0.3;
-  const safeX = Math.max(4, Math.min(aW - size - 4, x));
+  // Posisi X random tapi tetap dalam batas
+  const x = Math.random() * (aW - size - 8) + 4;
+  const startY = -(size + 10);
 
-  // Mulai dari atas arena, INSIDE (bukan negatif) agar tidak terpotong overflow:hidden
-  const startY = 4;
-
-  el.style.left = safeX + 'px';
+  el.style.left = x + 'px';
   el.style.top  = startY + 'px';
 
-  // Kecepatan jatuh: lambat supaya pemain sempat klik
-  const vy = 0.6 + Math.random() * 0.4;
+  const vy = 0.7 + Math.random() * 0.5;
 
   el.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1200,39 +1273,35 @@ function spawnBubble({ type, answer, id }) {
   });
 
   a.appendChild(el);
-  bubbles.set(id, { el, x: safeX, y: startY, vy, type, answer: String(answer || ''), sz: size, settled: false });
+  bubbles.set(id, { el, x, y: startY, vy, type, answer: String(answer || ''), sz: size, settled: false });
 }
 
 function handleBubbleClick(id, type, answer, el) {
   if (!isAlive || !questionActive) return;
-  if (!bubbles.has(id)) return; // already popped
+  if (!bubbles.has(id)) return;
   const correct = type === 'correct' || type === 'equivalent';
   const b = bubbles.get(id);
   el.classList.add('popping');
-  playBubblePop(correct); // 🔊 Audio
-  bubbles.delete(id); // remove immediately to prevent double-click
+  playBubblePop(correct);
+  bubbles.delete(id);
 
-  // Show score popup
+  // Score popup
   const popup = document.createElement('div');
   popup.className = 'score-popup';
   popup.textContent = correct ? '+100' : '-30';
   popup.style.color = correct ? 'var(--green)' : 'var(--red)';
   popup.style.left = (b.x + b.sz / 2) + 'px';
-  popup.style.top = (b.y) + 'px';
+  popup.style.top = b.y + 'px';
   arena().appendChild(popup);
   setTimeout(() => popup.remove(), 1000);
 
-  socket.emit('bubble_click', {
-    code: myRoom,
-    bubbleId: id,
-    answer,
-    isCorrect: correct
-  });
-
+  socket.emit('bubble_click', { code: myRoom, bubbleId: id, answer, isCorrect: correct });
   setTimeout(() => el.remove(), 300);
 
+  // Setelah bubble hilang, semua bubble di atasnya jadi "unsettled" → jatuh ngisi celah
+  unsettleBubblesAbove(b.x, b.sz, b.y);
+
   if (!correct) {
-    // Screen flash
     const flash = document.createElement('div');
     flash.style.cssText = 'position:fixed;inset:0;background:rgba(255,77,109,0.2);z-index:150;pointer-events:none;animation:fadeQuick 0.5s forwards';
     document.body.appendChild(flash);
@@ -1240,40 +1309,119 @@ function handleBubbleClick(id, type, answer, el) {
   }
 }
 
+// Setelah bubble diklik, re-evaluate SEMUA settled bubble —
+// kalau ada ruang di bawah mereka (target settle lebih rendah), jatuh ngisi celah
+function unsettleBubblesAbove(removedX, removedSz, removedY) {
+  let changed = true;
+  let passes = 0;
+  while (changed && passes < 10) {
+    changed = false;
+    passes++;
+    bubbles.forEach((b, id) => {
+      if (!b.settled) return;
+      const newTarget = getSettleTarget(id, b.x, b.sz);
+      // Threshold lebih kecil (4px) biar lebih sensitif
+      if (newTarget > b.y + 4) {
+        b.settled = false;
+        b.vy = 1.0;
+        b.el.style.opacity = '1';
+        changed = true;
+      }
+    });
+  }
+}
+
+function getSettleTarget(id, testX, testSz) {
+  const a = arena();
+  const aH = a ? (a.clientHeight || window.innerHeight - 110) : window.innerHeight - 110;
+  const floorY = aH - 8;
+  let targetY = floorY - testSz;
+  bubbles.forEach((other, otherId) => {
+    if (otherId === id || !other.settled) return;
+    const cx1 = testX + testSz / 2;
+    const cx2 = other.x + other.sz / 2;
+    const dx = Math.abs(cx1 - cx2);
+    // Threshold lebih besar: 0.95 supaya overlap horizontal tipis pun kedeteksi
+    const minDist = (testSz + other.sz) / 2;
+    if (dx < minDist * 0.95) {
+      // Posisi tepat di atas bubble yang settled, tanpa offset — biar rapat
+      const topY = other.y - testSz + 2;
+      if (topY < targetY) targetY = topY;
+    }
+  });
+  return targetY;
+}
+
 function animateBubbles() {
   const a = arena();
   if (!a) { animFrame = requestAnimationFrame(animateBubbles); return; }
 
   const aH = a.clientHeight || (window.innerHeight - 110);
-  // Tumpukan dimulai dari dasar arena
-  const floorY = aH - 10;
-
-  // Hitung tinggi tumpukan bubble yang sudah settled (agar yang baru menumpuk di atasnya)
-  let stackHeight = 0;
-  bubbles.forEach(b => { if (b.settled) stackHeight += b.sz * 0.6; });
-
+  const aW = a.clientWidth  || (window.innerWidth  - 220);
+  const dangerLineY = 70;
   let newlySettled = 0;
+
   bubbles.forEach((b, id) => {
     if (b.settled) return;
 
+    // Gravity
+    b.vy = Math.min((b.vy || 0.8) + 0.07, 4.0);
+
+    // ── SLIDING: cari posisi X terbaik (settle paling bawah) ──
+    // Dilakukan SETIAP frame biar responsif
+    const SLIDE_SPEED = 2.2;
+    const currentTarget = getSettleTarget(id, b.x, b.sz);
+
+    // Cek kiri dan kanan, langkah kecil
+    let bestX = b.x;
+    let bestTargetY = currentTarget;
+
+    for (const dir of [-1, 1]) {
+      for (let step = 1; step <= 6; step++) {
+        const testX = b.x + dir * b.sz * 0.28 * step;
+        if (testX < 2 || testX + b.sz > aW - 2) break;
+        const testTarget = getSettleTarget(id, testX, b.sz);
+        if (testTarget > bestTargetY + b.sz * 0.3) {
+          bestTargetY = testTarget;
+          bestX = testX;
+        }
+      }
+    }
+
+    // Kalau ada posisi lebih baik DAN bubble sudah cukup dekat target sekarang
+    const nearCurrentTarget = b.y >= currentTarget - b.sz * 0.8;
+    if (nearCurrentTarget && bestX !== b.x) {
+      // Gerak pelan ke arah bestX
+      const dir = bestX > b.x ? 1 : -1;
+      b.x = Math.max(2, Math.min(aW - b.sz - 2, b.x + dir * SLIDE_SPEED));
+      b.el.style.left = b.x + 'px';
+      // Jatuh sangat pelan sambil sliding
+      b.y += 0.3;
+      b.el.style.top = b.y + 'px';
+      return;
+    }
+
+    // ── JATUH NORMAL ──
     b.y += b.vy;
     b.el.style.top = b.y + 'px';
 
-    // Settle ketika bawah bubble menyentuh lantai atau tumpukan
-    const settleAt = floorY - stackHeight;
-    if (b.y + b.sz >= settleAt) {
+    // Settle kalau udah sampai target
+    if (b.y >= currentTarget) {
+      b.y = currentTarget;
       b.settled = true;
-      b.y = settleAt - b.sz;
+      b.vy = 0;
       b.el.style.top = b.y + 'px';
-      b.el.style.opacity = '0.75';
+      b.el.style.opacity = '0.92';
       newlySettled++;
     }
   });
 
-  // Kirim overflow HANYA jika tumpukan sudah tinggi (lebih dari 3 bubble)
-  const settled = [...bubbles.values()].filter(b => b.settled).length;
-  if (newlySettled > 0 && questionActive && settled > 3) {
-    socket.emit('bubble_overflow', { code: myRoom, amount: newlySettled });
+  // Overflow check
+  if (newlySettled > 0 && questionActive) {
+    const aboveDanger = [...bubbles.values()].filter(b => b.settled && b.y < dangerLineY).length;
+    if (aboveDanger > 0) {
+      socket.emit('bubble_overflow', { code: myRoom, amount: aboveDanger });
+    }
   }
 
   animFrame = requestAnimationFrame(animateBubbles);
@@ -1306,8 +1454,12 @@ function startBubbleSpawner(question) {
     spawnBubble({ type, answer, id: bubbleIdCounter });
   };
 
-  spawnOne(); // langsung spawn satu
-  bubbleInterval = setInterval(spawnOne, 2200); // 1 bubble per 2.2 detik
+  // Spawn 5 bubble sekaligus di awal biar langsung rame
+  for (let i = 0; i < 5; i++) {
+    setTimeout(spawnOne, i * 150);
+  }
+  // Lanjut spawn setiap 700ms — jauh lebih rame dari sebelumnya (2200ms)
+  bubbleInterval = setInterval(spawnOne, 700);
 }
 
 function clearBubbles() {
@@ -1377,6 +1529,25 @@ function renderLeaderboard(data) {
       if (barEl) {
         barEl.style.width = p.bubbleLevel + '%';
         barEl.className = 'level-bar' + (p.bubbleLevel > 80 ? ' critical' : p.bubbleLevel > 60 ? ' danger' : '');
+      }
+      // Vignette merah makin kuat seiring bubble level naik
+      const vign = document.getElementById('danger-vignette');
+      if (vign) {
+        if (p.bubbleLevel > 60) {
+          const intensity = (p.bubbleLevel - 60) / 40; // 0..1
+          vign.style.opacity = (intensity * 0.6).toFixed(2);
+        } else {
+          vign.style.opacity = '0';
+        }
+      }
+      // Kalau bubble level udah 100% → langsung eliminate diri sendiri
+      if (p.bubbleLevel >= 100 && isAlive && !isHost) {
+        isAlive = false;
+        questionActive = false;
+        clearBubbles();
+        document.getElementById('eliminated-overlay').classList.remove('hidden');
+        playEliminated();
+        showToast('☠️ Kamu ke-eliminate!', 'error');
       }
     }
   });
@@ -1472,21 +1643,44 @@ socket.on('error', ({ message }) => {
 });
 
 socket.on('game_started', () => {
-  isAlive = true;
+  isAlive = !isHost; // host tidak "alive" sebagai pemain
   clearBubbles();
   showScreen('game-screen');
-  animateBubbles();
+
+  if (isHost) {
+    // Host mode: tampilkan overlay spectator
+    const arena = document.getElementById('bubble-arena');
+    const hostBanner = document.createElement('div');
+    hostBanner.id = 'host-banner';
+    hostBanner.style.cssText = `
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(15,10,46,0.9); border: 2px solid rgba(168,85,247,0.5);
+      border-radius: 20px; padding: 24px 40px; text-align: center; z-index: 50;
+      backdrop-filter: blur(10px); pointer-events: none;
+    `;
+    hostBanner.innerHTML = `
+      <div style="font-size:40px; margin-bottom:8px;">👑</div>
+      <div style="font-family:'Fredoka One',cursive; font-size:22px; color:#a855f7; margin-bottom:4px;">You are the HOST</div>
+      <div style="font-size:13px; color:#b8a8e8;">Spectating the game...</div>
+    `;
+    arena.appendChild(hostBanner);
+    // Host tetap terima leaderboard update tapi ga spawn bubble
+  } else {
+    animateBubbles();
+  }
 });
 
-socket.on('round_starting', ({ round }) => {
+socket.on('round_starting', ({ round, roundInLevel, level, totalRoundsPerLevel }) => {
   playRoundFanfare(round);
   clearBubbles();
   questionActive = false;
   currentQuestion = null;
 
   const overlay = document.getElementById('round-overlay');
-  document.getElementById('round-overlay-num').textContent = round;
-  document.getElementById('round-num').textContent = round;
+  document.getElementById('round-overlay-num').textContent = roundInLevel || round;
+  document.getElementById('round-num').textContent = roundInLevel || round;
+  document.getElementById('rounds-total').textContent = totalRoundsPerLevel || 5;
+  document.getElementById('level-num').textContent = level || 1;
   document.getElementById('question-display').textContent = 'Get ready...';
   document.getElementById('timer-bar').style.width = '100%';
 
@@ -1494,15 +1688,20 @@ socket.on('round_starting', ({ round }) => {
   setTimeout(() => overlay.classList.remove('visible'), 2800);
 });
 
-socket.on('new_question', ({ round, question, correct_answer, wrong_answers, equivalent_expressions, duration }) => {
+socket.on('new_question', ({ round, roundInLevel, level, totalRoundsPerLevel, question, correct_answer, wrong_answers, equivalent_expressions, duration }) => {
   currentQuestion = { question, correct_answer, wrong_answers, equivalent_expressions };
   questionActive = true;
 
-  document.getElementById('round-num').textContent = round;
+  document.getElementById('round-num').textContent = roundInLevel || round;
+  document.getElementById('rounds-total').textContent = totalRoundsPerLevel || 5;
+  document.getElementById('level-num').textContent = level || 1;
   document.getElementById('question-display').textContent = question;
   startTimer(duration);
-  if (!animFrame) animateBubbles(); // restart animasi jika sudah berhenti
-  startBubbleSpawner(currentQuestion);
+
+  if (!isHost) {
+    if (!animFrame) animateBubbles();
+    startBubbleSpawner(currentQuestion);
+  }
 });
 
 socket.on('bubble_popped', ({ playerId, bubbleId, correct }) => {
@@ -1517,7 +1716,7 @@ socket.on('leaderboard_update', ({ leaderboard }) => {
 });
 
 socket.on('player_eliminated', ({ playerId, name, finalScore }) => {
-  if (data.playerId === socket.id) playEliminated();
+  if (playerId === myId) playEliminated();
   if (playerId === myId) {
     isAlive = false;
     questionActive = false;
@@ -1537,6 +1736,77 @@ socket.on('round_ended', ({ round }) => {
   questionActive = false;
   if (timerInterval) clearInterval(timerInterval);
   clearBubbles();
+});
+
+socket.on('level_complete', ({ level, nextLevel, leaderboard }) => {
+  questionActive = false;
+  if (timerInterval) clearInterval(timerInterval);
+  clearBubbles();
+
+  const overlay = document.getElementById('level-complete-overlay');
+  document.getElementById('lc-level-num').textContent = level;
+  document.getElementById('lc-next-level').textContent = nextLevel;
+
+  // Render mini leaderboard
+  const lb = document.getElementById('lc-leaderboard');
+  lb.innerHTML = '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px;">Standings</div>';
+  leaderboard.forEach((p, i) => {
+    const medals = ['🥇','🥈','🥉'];
+    const d = document.createElement('div');
+    d.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.06);';
+    d.innerHTML = `<span style="width:24px;text-align:center">${medals[i]||i+1}</span><span style="flex:1">${escapeHtml(p.name)}${p.id===myId?' (You)':''}</span><span style="color:var(--cyan)">${p.score}</span>`;
+    lb.appendChild(d);
+  });
+
+  // Buttons — host only gets Continue button
+  const btns = document.getElementById('lc-buttons');
+  btns.innerHTML = '';
+  if (isHost) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-success';
+    btn.style.width = '100%';
+    btn.textContent = `▶ Lanjut ke Level ${nextLevel}`;
+    btn.onclick = () => socket.emit('continue_level', { code: myRoom });
+    btns.appendChild(btn);
+    const btnStop = document.createElement('button');
+    btnStop.className = 'btn btn-secondary';
+    btnStop.style.width = '100%';
+    btnStop.textContent = '⏹ Stop & Lihat Hasil';
+    btnStop.onclick = () => {
+      overlay.classList.remove('visible');
+      stopGame();
+      // Show end screen manually with current leaderboard
+      document.getElementById('winner-name').textContent = leaderboard[0]?.name || '—';
+      const finalList = document.getElementById('final-leaderboard-list');
+      finalList.innerHTML = '';
+      leaderboard.forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = 'final-lb-item';
+        const medals = ['🥇','🥈','🥉'];
+        div.innerHTML = `<div class="final-rank">${medals[i]||(i+1)}</div><div class="final-name">${escapeHtml(p.name)}${p.id===myId?' (You)':''}</div><div class="final-score">${p.score}</div><div class="final-status">${p.alive?'🟢':'💀'}</div>`;
+        finalList.appendChild(div);
+      });
+      showScreen('end-screen');
+    };
+    btns.appendChild(btnStop);
+  } else {
+    btns.innerHTML = '<div style="color:var(--text-muted);font-size:14px;font-weight:700;text-align:center;">Menunggu host...</div>';
+  }
+
+  overlay.classList.add('visible');
+});
+
+socket.on('level_started', ({ level }) => {
+  const overlay = document.getElementById('level-complete-overlay');
+  overlay.classList.remove('visible');
+  showToast(`⚡ Level ${level} dimulai!`, 'success');
+  document.getElementById('level-num').textContent = level;
+  // Reset bubble level display
+  const barEl = document.getElementById('my-level-bar');
+  const pctEl = document.getElementById('bubble-pct');
+  if (barEl) { barEl.style.width = '0%'; barEl.className = 'level-bar'; }
+  if (pctEl) pctEl.textContent = '0%';
+  // animateBubbles will be started by new_question handler
 });
 
 socket.on('game_ended', ({ winner, leaderboard }) => {
