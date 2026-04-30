@@ -173,7 +173,7 @@ io.on('connection', (socket) => {
     const player = room.players[socket.id];
     if (!player || !player.alive) return;
 
-    player.bubbleLevel = Math.min(100, player.bubbleLevel + (amount || 5));
+    player.bubbleLevel = Math.min(100, player.bubbleLevel + Math.min(amount || 2, 3));
     checkElimination(code, socket.id);
     emitLeaderboard(code);
   });
@@ -228,25 +228,8 @@ async function startRound(code) {
       duration: 30000
     });
 
-    // Increase bubble level for all alive players every 5s
-    const overflowInterval = setInterval(() => {
-      if (!rooms[code] || rooms[code].status !== 'playing' || rooms[code].round !== room.round) {
-        clearInterval(overflowInterval);
-        return;
-      }
-      Object.keys(rooms[code].players).forEach(pid => {
-        const p = rooms[code].players[pid];
-        if (p.alive) {
-          p.bubbleLevel = Math.min(100, p.bubbleLevel + 3);
-          checkElimination(code, pid);
-        }
-      });
-      emitLeaderboard(code);
-    }, 5000);
-
     // Next round after 30 seconds
     room.questionTimer = setTimeout(async () => {
-      clearInterval(overflowInterval);
       if (!rooms[code] || rooms[code].status !== 'playing') return;
       io.to(code).emit('round_ended', { round: room.round });
       await new Promise(r => setTimeout(r, 3000));
@@ -282,7 +265,8 @@ function checkGameEnd(code) {
   const alivePlayers = Object.values(room.players).filter(p => p.alive && !p.disconnected);
   
   const totalPlayers = Object.values(room.players).filter(p => !p.disconnected).length;
-  if (alivePlayers.length <= 1 && (totalPlayers <= 1 || alivePlayers.length === 0)) {
+  // Game berakhir kalau sisa 1 atau 0 pemain hidup (dari minimal 2 total)
+  if (alivePlayers.length <= 1) {
     room.status = 'ended';
     clearTimeout(room.questionTimer);
 

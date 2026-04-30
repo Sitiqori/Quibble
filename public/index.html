@@ -418,21 +418,21 @@ input[type=text]:focus {
 /* Danger zone line */
 .danger-line {
   position: absolute;
-  bottom: 60px;
+  top: 70px;
   left: 0;
   right: 0;
   height: 3px;
-  background: rgba(255,77,109,0.6);
+  background: rgba(255,77,109,0.7);
   z-index: 5;
 }
-.danger-line::before {
+.danger-line::after {
   content: '☠ DANGER ZONE';
   position: absolute;
   right: 12px;
-  top: -20px;
+  bottom: 6px;
   font-size: 10px;
   font-weight: 800;
-  color: rgba(255,77,109,0.7);
+  color: rgba(255,77,109,0.8);
   letter-spacing: 2px;
 }
 
@@ -458,30 +458,20 @@ input[type=text]:focus {
 .bubble:hover { transform: scale(1.1) !important; }
 .bubble:active { transform: scale(0.9) !important; }
 
-.bubble.correct {
-  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), var(--bubble-correct));
-  color: #0a2a1f;
-  box-shadow: 0 4px 20px rgba(78,204,163,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
-  border: 2px solid rgba(255,255,255,0.3);
-}
-.bubble.wrong {
-  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.2), var(--bubble-wrong));
-  color: white;
-  box-shadow: 0 4px 20px rgba(255,77,109,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
-  border: 2px solid rgba(255,255,255,0.2);
-}
-.bubble.empty {
-  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.1), var(--bubble-empty));
-  color: var(--text-muted);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
-  border: 2px solid rgba(255,255,255,0.1);
-}
-.bubble.equivalent {
-  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.25), #ffd166);
-  color: #3a2a00;
-  box-shadow: 0 4px 20px rgba(255,209,102,0.5), inset 0 1px 0 rgba(255,255,255,0.4);
-  border: 2px solid rgba(255,255,255,0.3);
-}
+.bubble.correct  { color: #fff; border: 2px solid rgba(255,255,255,0.4); }
+.bubble.equivalent{ color: #fff; border: 2px solid rgba(255,255,255,0.4); }
+.bubble.wrong    { color: #fff; border: 2px solid rgba(255,255,255,0.25); }
+.bubble.empty    { color: rgba(255,255,255,0.4); border: 2px solid rgba(255,255,255,0.1); background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.05), #1a1a2e) !important; }
+
+/* Palette warna-warni untuk bubble — diterapkan via JS .color-N */
+.bubble.color-0  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #e63946); box-shadow: 0 4px 20px rgba(230,57,70,0.5); }
+.bubble.color-1  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #2a9d8f); box-shadow: 0 4px 20px rgba(42,157,143,0.5); }
+.bubble.color-2  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #e9c46a); box-shadow: 0 4px 20px rgba(233,196,106,0.5); color: #2a1f00 !important; }
+.bubble.color-3  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #f4a261); box-shadow: 0 4px 20px rgba(244,162,97,0.5); color: #2a1000 !important; }
+.bubble.color-4  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #6a4c93); box-shadow: 0 4px 20px rgba(106,76,147,0.5); }
+.bubble.color-5  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #1982c4); box-shadow: 0 4px 20px rgba(25,130,196,0.5); }
+.bubble.color-6  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #8ac926); box-shadow: 0 4px 20px rgba(138,201,38,0.5); color: #1a2a00 !important; }
+.bubble.color-7  { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #ff595e); box-shadow: 0 4px 20px rgba(255,89,94,0.5); }
 
 .bubble.popping {
   animation: pop 0.3s ease forwards;
@@ -962,6 +952,91 @@ input[type=text]:focus {
 </div>
 
 <script>
+
+// ─── Audio Engine (Web Audio API) ────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+function playBubblePop(correct) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (correct) {
+      // Correct: ascending cheerful boing
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.25);
+    } else {
+      // Wrong: low thud
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.2);
+    }
+  } catch(e) {}
+}
+
+function playRoundFanfare(round) {
+  try {
+    const ctx = getAudioCtx();
+    // Play a short ascending arpeggio
+    const notes = round === 1
+      ? [523, 659, 784, 1047]   // C5 E5 G5 C6
+      : [392, 523, 659, 784];   // G4 C5 E5 G5
+
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'triangle';
+      const t = ctx.currentTime + i * 0.12;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.3, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      osc.start(t);
+      osc.stop(t + 0.25);
+    });
+  } catch(e) {}
+}
+
+function playEliminated() {
+  try {
+    const ctx = getAudioCtx();
+    const notes = [400, 300, 200, 150];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sawtooth';
+      const t = ctx.currentTime + i * 0.15;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.35, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      osc.start(t);
+      osc.stop(t + 0.3);
+    });
+  } catch(e) {}
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ═══════════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════════
@@ -1089,29 +1164,35 @@ function spawnBubble({ type, answer, id }) {
   if (!isAlive) return;
   const a = arena();
   if (!a) return;
-  const aW = a.offsetWidth || (window.innerWidth - 220);
 
+  const aW = a.clientWidth  || (window.innerWidth  - 220);
+  const aH = a.clientHeight || (window.innerHeight - 110);
   const size = getBubbleSizeForText(String(answer || ''));
+
   const el = document.createElement('div');
-  el.className = 'bubble ' + type;
-  el.style.width = size + 'px';
+  // Warna acak dari 8 palet (color-0..7) — selalu beda tiap bubble
+  const colorIdx = Math.floor(Math.random() * 8);
+  el.className = 'bubble ' + type + ' color-' + colorIdx;
+  el.style.width  = size + 'px';
   el.style.height = size + 'px';
-  el.style.fontSize = (size > 80 ? 13 : 16) + 'px';
-  el.textContent = String(answer || '');
+  el.style.fontSize = Math.max(11, Math.min(18, size * 0.3)) + 'px';
+  el.textContent = String(answer || '○');
 
-  // X acak, hindari tumpang tindih dengan memberi jarak minimum
-  // Bagi arena jadi 5 zona supaya bubble tersebar merata, tidak berhimpitan
-  const zones = 5;
-  const zone = Math.floor(Math.random() * zones);
-  const zoneW = Math.max(60, (aW - size) / zones);
-  const x = zone * zoneW + Math.random() * Math.max(10, zoneW - size);
-  // Mulai TEPAT di atas arena (y negatif = belum kelihatan, muncul dari atas)
-  const startY = 0; // Start at very top of arena (inside visible area)
-  el.style.left = x + 'px';
-  el.style.top = startY + 'px';
+  // Posisi X: bagi 5 slot berjarak, pilih slot berdasarkan id
+  const slotCount = 5;
+  const slotW     = (aW - size) / slotCount;
+  const slotIdx   = id % slotCount;
+  const x = slotIdx * slotW + (slotW - size) * 0.5 + (Math.random() - 0.5) * slotW * 0.3;
+  const safeX = Math.max(4, Math.min(aW - size - 4, x));
 
-  // Jatuh ke bawah: 1.5–2.5 px/frame
-  const vy = 0.8 + Math.random() * 0.6; // Slower fall so player can click
+  // Mulai dari atas arena, INSIDE (bukan negatif) agar tidak terpotong overflow:hidden
+  const startY = 4;
+
+  el.style.left = safeX + 'px';
+  el.style.top  = startY + 'px';
+
+  // Kecepatan jatuh: lambat supaya pemain sempat klik
+  const vy = 0.6 + Math.random() * 0.4;
 
   el.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1119,7 +1200,7 @@ function spawnBubble({ type, answer, id }) {
   });
 
   a.appendChild(el);
-  bubbles.set(id, { el, x, y: startY, vy, type, answer: String(answer || ''), sz: size, settled: false });
+  bubbles.set(id, { el, x: safeX, y: startY, vy, type, answer: String(answer || ''), sz: size, settled: false });
 }
 
 function handleBubbleClick(id, type, answer, el) {
@@ -1128,6 +1209,7 @@ function handleBubbleClick(id, type, answer, el) {
   const correct = type === 'correct' || type === 'equivalent';
   const b = bubbles.get(id);
   el.classList.add('popping');
+  playBubblePop(correct); // 🔊 Audio
   bubbles.delete(id); // remove immediately to prevent double-click
 
   // Show score popup
@@ -1162,29 +1244,36 @@ function animateBubbles() {
   const a = arena();
   if (!a) { animFrame = requestAnimationFrame(animateBubbles); return; }
 
-  // dangerY = posisi garis bahaya dari ATAS arena (bottom:60px → dangerY = aH - 60)
-  const aH = a.offsetHeight || (window.innerHeight - 110);
-  const dangerY = aH - 60;
-  let newlySettled = 0;
+  const aH = a.clientHeight || (window.innerHeight - 110);
+  // Tumpukan dimulai dari dasar arena
+  const floorY = aH - 10;
 
+  // Hitung tinggi tumpukan bubble yang sudah settled (agar yang baru menumpuk di atasnya)
+  let stackHeight = 0;
+  bubbles.forEach(b => { if (b.settled) stackHeight += b.sz * 0.6; });
+
+  let newlySettled = 0;
   bubbles.forEach((b, id) => {
     if (b.settled) return;
 
-    b.y += b.vy; // positif = jatuh ke bawah
+    b.y += b.vy;
     b.el.style.top = b.y + 'px';
 
-    // Settle saat BAWAH bubble menyentuh danger line
-    if (b.y + b.sz >= dangerY) {
+    // Settle ketika bawah bubble menyentuh lantai atau tumpukan
+    const settleAt = floorY - stackHeight;
+    if (b.y + b.sz >= settleAt) {
       b.settled = true;
-      b.y = dangerY - b.sz;
+      b.y = settleAt - b.sz;
       b.el.style.top = b.y + 'px';
-      b.el.style.opacity = '0.7';
+      b.el.style.opacity = '0.75';
       newlySettled++;
     }
   });
 
-  if (newlySettled > 0 && questionActive) {
-    socket.emit('bubble_overflow', { code: myRoom, amount: newlySettled * 2 });
+  // Kirim overflow HANYA jika tumpukan sudah tinggi (lebih dari 3 bubble)
+  const settled = [...bubbles.values()].filter(b => b.settled).length;
+  if (newlySettled > 0 && questionActive && settled > 3) {
+    socket.emit('bubble_overflow', { code: myRoom, amount: newlySettled });
   }
 
   animFrame = requestAnimationFrame(animateBubbles);
@@ -1208,9 +1297,8 @@ function startBubbleSpawner(question) {
       const equivs = question.equivalent_expressions;
       answer = equivs[Math.floor(Math.random() * equivs.length)];
     } else if (roll < 0.78) {
-      const wrongs = question.wrong_answers;
       type = 'wrong';
-      answer = wrongs[Math.floor(Math.random() * wrongs.length)];
+      answer = question.wrong_answers[Math.floor(Math.random() * question.wrong_answers.length)];
     } else {
       type = 'empty';
       answer = '○';
@@ -1218,9 +1306,8 @@ function startBubbleSpawner(question) {
     spawnBubble({ type, answer, id: bubbleIdCounter });
   };
 
-  // 1 bubble per 2.5 detik, tidak berhimpitan
-  spawnOne();
-  bubbleInterval = setInterval(spawnOne, 2500);
+  spawnOne(); // langsung spawn satu
+  bubbleInterval = setInterval(spawnOne, 2200); // 1 bubble per 2.2 detik
 }
 
 function clearBubbles() {
@@ -1392,6 +1479,7 @@ socket.on('game_started', () => {
 });
 
 socket.on('round_starting', ({ round }) => {
+  playRoundFanfare(round);
   clearBubbles();
   questionActive = false;
   currentQuestion = null;
@@ -1413,6 +1501,7 @@ socket.on('new_question', ({ round, question, correct_answer, wrong_answers, equ
   document.getElementById('round-num').textContent = round;
   document.getElementById('question-display').textContent = question;
   startTimer(duration);
+  if (!animFrame) animateBubbles(); // restart animasi jika sudah berhenti
   startBubbleSpawner(currentQuestion);
 });
 
@@ -1428,6 +1517,7 @@ socket.on('leaderboard_update', ({ leaderboard }) => {
 });
 
 socket.on('player_eliminated', ({ playerId, name, finalScore }) => {
+  if (data.playerId === socket.id) playEliminated();
   if (playerId === myId) {
     isAlive = false;
     questionActive = false;
