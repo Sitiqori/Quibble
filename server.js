@@ -265,10 +265,13 @@ io.on('connection', (socket) => {
     room.status = 'ended';
     clearTimeout(room.questionTimer);
     const allPlayers = Object.values(room.players).sort((a, b) => b.score - a.score);
-    const winner = allPlayers.find(p => p.alive) || allPlayers[0];
+    const nonHostPlayers = allPlayers.filter(p => p.id !== room.host);
+    const hostPlayer = room.players[room.host];
+    const winner = nonHostPlayers.find(p => p.alive) || nonHostPlayers[0];
     io.to(code).emit('game_ended', {
       winner: winner ? { id: winner.id, name: winner.name, score: winner.score } : null,
-      leaderboard: allPlayers.map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive }))
+      host: hostPlayer ? { id: hostPlayer.id, name: hostPlayer.name } : null,
+      leaderboard: nonHostPlayers.map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive }))
     });
     setTimeout(() => { delete rooms[code]; }, 60000);
   });
@@ -394,7 +397,7 @@ function checkGameEnd(code) {
   const room = rooms[code];
   if (!room || room.status !== 'playing') return;
 
-  const alivePlayers = Object.values(room.players).filter(p => p.alive && !p.disconnected);
+  const alivePlayers = Object.values(room.players).filter(p => p.alive && !p.disconnected && p.id !== room.host);
   
   const totalPlayers = Object.values(room.players).filter(p => !p.disconnected).length;
   // Game berakhir kalau sisa 1 atau 0 pemain hidup (dari minimal 2 total)
@@ -405,11 +408,14 @@ function checkGameEnd(code) {
     const allPlayers = Object.values(room.players)
       .sort((a, b) => b.score - a.score);
 
-    const winner = alivePlayers[0] || allPlayers[0];
+    const nonHostPlayers = allPlayers.filter(p => p.id !== room.host);
+    const hostPlayer = room.players[room.host];
+    const winner = alivePlayers[0] || nonHostPlayers[0];
 
     io.to(code).emit('game_ended', {
       winner: winner ? { id: winner.id, name: winner.name, score: winner.score } : null,
-      leaderboard: allPlayers.map((p, i) => ({
+      host: hostPlayer ? { id: hostPlayer.id, name: hostPlayer.name } : null,
+      leaderboard: nonHostPlayers.map((p, i) => ({
         rank: i + 1,
         id: p.id,
         name: p.name,
@@ -438,6 +444,7 @@ function emitLeaderboard(code) {
   const room = rooms[code];
   if (!room) return;
   const leaderboard = Object.values(room.players)
+    .filter(p => p.id !== room.host)
     .sort((a, b) => b.score - a.score)
     .map((p, i) => ({
       rank: i + 1,

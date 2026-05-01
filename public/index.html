@@ -1591,6 +1591,8 @@ function startBubbleSpawner(question) {
 function clearBubbles() {
   bubbles.forEach(b => b.el.remove());
   bubbles.clear();
+  const hb = document.getElementById('host-banner');
+  if (hb) hb.remove();
   if (bubbleInterval) { clearInterval(bubbleInterval); bubbleInterval = null; }
   if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
 }
@@ -1924,10 +1926,26 @@ socket.on('level_started', ({ level }) => {
   // animateBubbles will be started by new_question handler
 });
 
-socket.on('game_ended', ({ winner, leaderboard }) => {
+socket.on('game_ended', ({ winner, leaderboard, host }) => {
   stopGame();
 
   document.getElementById('winner-name').textContent = winner ? winner.name : '—';
+
+  // Tampilkan host di atas kotak leaderboard
+  let hostBadge = document.getElementById('end-host-badge');
+  if (!hostBadge) {
+    hostBadge = document.createElement('div');
+    hostBadge.id = 'end-host-badge';
+    hostBadge.style.cssText = `
+      text-align:center; margin-bottom:12px;
+      font-size:14px; font-weight:700; color:var(--text-muted); letter-spacing:0.05em;
+    `;
+    const finalLeaderboard = document.querySelector('.final-leaderboard');
+    finalLeaderboard.insertBefore(hostBadge, finalLeaderboard.firstChild);
+  }
+  hostBadge.innerHTML = host
+    ? `${escapeHtml(host.name)}${host.id === myId ? ' (You)' : ''} &nbsp;—&nbsp; Host`
+    : '';
 
   const finalList = document.getElementById('final-leaderboard-list');
   finalList.innerHTML = '';

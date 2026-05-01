@@ -18,7 +18,7 @@ npm install
 node server.js
 
 # Run with Gemini AI questions
-GEMINI_API_KEY=your_key_here node server.js
+GEMINI_API_KEY=AIzaSyCrQwnYy4xlSUXzCT-bvsFuU3EE9S4clzA node server.js
 ```
 
 Server starts at: **http://localhost:3000**
