@@ -462,7 +462,7 @@ input[type=text]:focus {
 /* Danger zone line */
 .danger-line {
   position: absolute;
-  top: 70px;
+  top: 20%;
   left: 0;
   right: 0;
   height: 3px;
@@ -755,6 +755,7 @@ input[type=text]:focus {
   transition: opacity 0.3s;
 }
 .round-overlay.visible { opacity: 1; }
+#level-complete-overlay.visible { pointer-events: auto; }
 
 .round-number {
   font-family: 'Fredoka One', cursive;
@@ -1318,10 +1319,10 @@ const arena = () => document.getElementById('bubble-arena');
 
 function getBubbleSizeForText(text) {
   const len = String(text).length;
-  if (len <= 2) return 64;
-  if (len <= 4) return 72;
-  if (len <= 6) return 84;
-  return 96;
+  if (len <= 2) return 80;
+  if (len <= 4) return 88;
+  if (len <= 6) return 96;
+  return 108;
 }
 
 function spawnBubble({ type, answer, id }) {
@@ -1337,17 +1338,45 @@ function spawnBubble({ type, answer, id }) {
   el.className = 'bubble ' + type + ' color-' + colorIdx;
   el.style.width  = size + 'px';
   el.style.height = size + 'px';
-  el.style.fontSize = Math.max(11, Math.min(18, size * 0.3)) + 'px';
+  el.style.fontSize = Math.max(14, Math.min(26, size * 0.25)) + 'px';
   el.textContent = String(answer || '○');
 
-  // Posisi X random tapi tetap dalam batas
-  const x = Math.random() * (aW - size - 8) + 4;
-  const startY = -(size + 10);
+  // === SPREAD SPAWN: bagi arena jadi kolom, pilih kolom paling kosong ===
+  const padding = 8;
+  const usableW = aW - padding * 2;
+  const NUM_COLS = Math.max(3, Math.floor(usableW / (size * 1.6)));
+  const colW = usableW / NUM_COLS;
 
+  // Hitung isi tiap kolom dari bubble yang sedang aktif
+  const activeBubbles = [...bubbles.values()];
+  const colCounts = new Array(NUM_COLS).fill(0);
+  activeBubbles.forEach(b => {
+    const col = Math.floor((b.x - padding) / colW);
+    if (col >= 0 && col < NUM_COLS) colCounts[col]++;
+  });
+
+  // Pilih kolom paling sedikit isinya (boleh acak kalau seri)
+  const minCount = Math.min(...colCounts);
+  const candidates = colCounts.reduce((acc, c, i) => (c <= minCount + 1 ? [...acc, i] : acc), []);
+  const chosenCol = candidates[Math.floor(Math.random() * candidates.length)];
+
+  // Posisi X dalam kolom terpilih, dengan sedikit variasi
+  const colStart = padding + chosenCol * colW;
+  let x = colStart + (colW - size) * 0.1 + Math.random() * (colW - size) * 0.8;
+  x = Math.max(padding, Math.min(aW - size - padding, x));
+
+  // Anti-overlap: nudge jika terlalu dekat bubble lain di spawn area
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const tooClose = activeBubbles.some(b => Math.abs(b.x - x) < size * 1.1 && b.y < size * 2);
+    if (!tooClose) break;
+    x = padding + Math.random() * (aW - size - padding * 2);
+  }
+
+  const startY = -(size + 10);
   el.style.left = x + 'px';
   el.style.top  = startY + 'px';
 
-  const vy = 0.7 + Math.random() * 0.5;
+  const vy = 0.7 + Math.random() * 0.6;
 
   el.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1394,22 +1423,27 @@ function handleBubbleClick(id, type, answer, el) {
 // Setelah bubble diklik, re-evaluate SEMUA settled bubble —
 // kalau ada ruang di bawah mereka (target settle lebih rendah), jatuh ngisi celah
 function unsettleBubblesAbove(removedX, removedSz, removedY) {
+  // Re-evaluate semua settled bubble dari bawah ke atas
+  // Urutkan dari y terbesar (paling bawah) ke y terkecil (paling atas)
+  const sorted = [...bubbles.entries()]
+    .filter(([, b]) => b.settled)
+    .sort(([, a], [, b]) => b.y - a.y); // bawah dulu
+
   let changed = true;
   let passes = 0;
-  while (changed && passes < 10) {
+  while (changed && passes < 15) {
     changed = false;
     passes++;
-    bubbles.forEach((b, id) => {
-      if (!b.settled) return;
+    for (const [id, b] of sorted) {
+      if (!b.settled) continue;
       const newTarget = getSettleTarget(id, b.x, b.sz);
-      // Threshold lebih kecil (4px) biar lebih sensitif
-      if (newTarget > b.y + 4) {
+      if (newTarget > b.y + 2) { // threshold lebih sensitif
         b.settled = false;
-        b.vy = 1.0;
+        b.vy = 0.5;
         b.el.style.opacity = '1';
         changed = true;
       }
-    });
+    }
   }
 }
 
@@ -1440,7 +1474,7 @@ function animateBubbles() {
 
   const aH = a.clientHeight || (window.innerHeight - 110);
   const aW = a.clientWidth  || (window.innerWidth  - 220);
-  const dangerLineY = 70;
+  const dangerLineY = aH * 0.20;
   let newlySettled = 0;
 
   bubbles.forEach((b, id) => {
@@ -1498,11 +1532,21 @@ function animateBubbles() {
     }
   });
 
-  // Overflow check
-  if (newlySettled > 0 && questionActive) {
-    const aboveDanger = [...bubbles.values()].filter(b => b.settled && b.y < dangerLineY).length;
+  // Danger zone: cek semua bubble (settled atau tidak) yang posisinya di atas garis
+  if (questionActive) {
+    const aboveDanger = [...bubbles.values()].filter(b => b.y < dangerLineY).length;
+    const dangerEl = document.getElementById('danger-line');
     if (aboveDanger > 0) {
-      socket.emit('bubble_overflow', { code: myRoom, amount: aboveDanger });
+      if (dangerEl) dangerEl.style.background = 'rgba(255,77,109,1)';
+      if (!animateBubbles._dangerTick) animateBubbles._dangerTick = 0;
+      animateBubbles._dangerTick++;
+      if (animateBubbles._dangerTick >= 60) {
+        animateBubbles._dangerTick = 0;
+        socket.emit('bubble_overflow', { code: myRoom, amount: aboveDanger * 2 });
+      }
+    } else {
+      if (dangerEl) dangerEl.style.background = 'rgba(255,77,109,0.7)';
+      animateBubbles._dangerTick = 0;
     }
   }
 
@@ -1857,20 +1901,7 @@ socket.on('level_complete', ({ level, nextLevel, leaderboard }) => {
     btnStop.style.width = '100%';
     btnStop.textContent = '⏹ Stop & Lihat Hasil';
     btnStop.onclick = () => {
-      overlay.classList.remove('visible');
-      stopGame();
-      // Show end screen manually with current leaderboard
-      document.getElementById('winner-name').textContent = leaderboard[0]?.name || '—';
-      const finalList = document.getElementById('final-leaderboard-list');
-      finalList.innerHTML = '';
-      leaderboard.forEach((p, i) => {
-        const div = document.createElement('div');
-        div.className = 'final-lb-item';
-        const medals = ['🥇','🥈','🥉'];
-        div.innerHTML = `<div class="final-rank">${medals[i]||(i+1)}</div><div class="final-name">${escapeHtml(p.name)}${p.id===myId?' (You)':''}</div><div class="final-score">${p.score}</div><div class="final-status">${p.alive?'🟢':'💀'}</div>`;
-        finalList.appendChild(div);
-      });
-      showScreen('end-screen');
+      socket.emit('stop_game', { code: myRoom });
     };
     btns.appendChild(btnStop);
   } else {
