@@ -1117,6 +1117,88 @@ function playEliminated() {
     });
   } catch(e) {}
 }
+function playLevelComplete() {
+  // Triumphant ascending fanfare — level cleared!
+  try {
+    const ctx = getAudioCtx();
+    const melody = [523, 659, 784, 1047, 1319]; // C5 E5 G5 C6 E6
+    melody.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'triangle';
+      const t = ctx.currentTime + i * 0.13;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.35, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc.start(t); osc.stop(t + 0.35);
+    });
+    // Extra sustain chord on last note
+    ['1047','1319','1568'].forEach((f, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      const t = ctx.currentTime + melody.length * 0.13 + 0.05;
+      osc.frequency.setValueAtTime(Number(f), t);
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+      osc.start(t); osc.stop(t + 0.7);
+    });
+  } catch(e) {}
+}
+
+function playGameOver(isWinner) {
+  try {
+    const ctx = getAudioCtx();
+    if (isWinner) {
+      // Winner jingle — fanfare + sparkle
+      const notes = [523, 659, 784, 659, 1047];
+      notes.forEach((freq, i) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = i === 4 ? 'sine' : 'triangle';
+        const t = ctx.currentTime + i * 0.15;
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.4, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+        osc.start(t); osc.stop(t + 0.4);
+      });
+    } else {
+      // Loser / game over — descending muted tones
+      const notes = [330, 277, 220, 165];
+      notes.forEach((freq, i) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        const t = ctx.currentTime + i * 0.22;
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.3, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+        osc.start(t); osc.stop(t + 0.45);
+      });
+    }
+  } catch(e) {}
+}
+
+function playOtherPlayerEliminated() {
+  // Subtle 'pop' sound when someone else gets eliminated
+  try {
+    const ctx = getAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(300, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1724,6 +1806,7 @@ socket.on('player_eliminated', ({ playerId, name, finalScore }) => {
     document.getElementById('eliminated-overlay').classList.remove('hidden');
     showToast('You have been eliminated!', 'error');
   } else {
+    playOtherPlayerEliminated();
     showToast(`${name} was eliminated! 💀`, 'info');
   }
 });
@@ -1739,6 +1822,7 @@ socket.on('round_ended', ({ round }) => {
 });
 
 socket.on('level_complete', ({ level, nextLevel, leaderboard }) => {
+  playLevelComplete();
   questionActive = false;
   if (timerInterval) clearInterval(timerInterval);
   clearBubbles();
@@ -1831,7 +1915,9 @@ socket.on('game_ended', ({ winner, leaderboard }) => {
 
   showScreen('end-screen');
 
-  if (winner && winner.id === myId) {
+  const isWinner = winner && winner.id === myId;
+  playGameOver(isWinner);
+  if (isWinner) {
     launchConfetti();
     showToast('🏆 You won!', 'success');
   } else {
