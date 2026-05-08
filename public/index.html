@@ -1376,7 +1376,7 @@ function spawnBubble({ type, answer, id }) {
   el.style.left = x + 'px';
   el.style.top  = startY + 'px';
 
-  const vy = 0.7 + Math.random() * 0.6;
+  const vy = (6.0 + Math.random() * 3.0) * bubbleSpeedMultiplier;
 
   el.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1395,6 +1395,13 @@ function handleBubbleClick(id, type, answer, el) {
   el.classList.add('popping');
   playBubblePop(correct);
   bubbles.delete(id);
+  activeBubbleAnswers.delete(String(answer));
+
+  if (!correct) {
+    // Speed up all bubbles on wrong answer
+    bubbleSpeedMultiplier = Math.min(bubbleSpeedMultiplier + 0.4, 3.5);
+    bubbles.forEach(b2 => { b2.vy = Math.min(b2.vy * 1.3 + 0.5, 10); });
+  }
 
   // Score popup
   const popup = document.createElement('div');
@@ -1481,7 +1488,7 @@ function animateBubbles() {
     if (b.settled) return;
 
     // Gravity
-    b.vy = Math.min((b.vy || 0.8) + 0.07, 4.0);
+    b.vy = Math.min((b.vy || 6.0) + 0.25 * bubbleSpeedMultiplier, 14.0 * bubbleSpeedMultiplier);
 
     // ── SLIDING: cari posisi X terbaik (settle paling bawah) ──
     // Dilakukan SETIAP frame biar responsif
@@ -1553,39 +1560,66 @@ function animateBubbles() {
   animFrame = requestAnimationFrame(animateBubbles);
 }
 
+// Track which answers are currently shown in bubbles (to avoid duplicates)
+const activeBubbleAnswers = new Set();
+let bubbleSpeedMultiplier = 1.0;
+
+function buildBubblePool(question) {
+  // Build a pool: 1 correct + all wrong answers, no duplicates
+  const pool = [];
+  pool.push({ type: 'correct', answer: String(question.correct_answer) });
+  question.wrong_answers.forEach(a => {
+    if (String(a) !== String(question.correct_answer)) {
+      pool.push({ type: 'wrong', answer: String(a) });
+    }
+  });
+  // Shuffle pool
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool;
+}
+
 function startBubbleSpawner(question) {
   if (bubbleInterval) clearInterval(bubbleInterval);
+  // TIDAK reset activeBubbleAnswers — bubble lama tetap di layar
+  bubbleSpeedMultiplier = 1.0;
+
+  let pool = buildBubblePool(question);
+  let poolIndex = 0;
 
   const spawnOne = () => {
     if (!questionActive) return;
-    bubbleIdCounter++;
-    let type, answer;
-    const roll = Math.random();
-    const hasEquiv = question.equivalent_expressions && question.equivalent_expressions.length > 0;
 
-    if (roll < 0.30) {
-      type = 'correct';
-      answer = question.correct_answer;
-    } else if (hasEquiv && roll < 0.45) {
-      type = 'equivalent';
-      const equivs = question.equivalent_expressions;
-      answer = equivs[Math.floor(Math.random() * equivs.length)];
-    } else if (roll < 0.78) {
-      type = 'wrong';
-      answer = question.wrong_answers[Math.floor(Math.random() * question.wrong_answers.length)];
-    } else {
-      type = 'empty';
-      answer = '○';
+    // Rebuild pool when exhausted
+    if (poolIndex >= pool.length) {
+      pool = buildBubblePool(question);
+      poolIndex = 0;
     }
-    spawnBubble({ type, answer, id: bubbleIdCounter });
+
+    // Find next pool entry whose answer is NOT currently on screen
+    let found = null;
+    for (let attempts = 0; attempts < pool.length; attempts++) {
+      const candidate = pool[(poolIndex + attempts) % pool.length];
+      if (!activeBubbleAnswers.has(candidate.answer)) {
+        found = candidate;
+        poolIndex = (poolIndex + attempts + 1) % pool.length;
+        break;
+      }
+    }
+    if (!found) return; // all answers already on screen, wait
+
+    bubbleIdCounter++;
+    activeBubbleAnswers.add(found.answer);
+    spawnBubble({ type: found.type, answer: found.answer, id: bubbleIdCounter });
   };
 
-  // Spawn 5 bubble sekaligus di awal biar langsung rame
-  for (let i = 0; i < 5; i++) {
-    setTimeout(spawnOne, i * 150);
+  // Spawn initial batch
+  for (let i = 0; i < 6; i++) {
+    setTimeout(spawnOne, i * 120);
   }
-  // Lanjut spawn setiap 700ms — jauh lebih rame dari sebelumnya (2200ms)
-  bubbleInterval = setInterval(spawnOne, 700);
+  bubbleInterval = setInterval(spawnOne, 500);
 }
 
 function clearBubbles() {
@@ -1800,7 +1834,13 @@ socket.on('game_started', () => {
 
 socket.on('round_starting', ({ round, roundInLevel, level, totalRoundsPerLevel }) => {
   playRoundFanfare(round);
-  clearBubbles();
+  // Hanya bersihkan bubble di awal level (soal 1), soal 2–5 bubble lama tetap ada
+  if (roundInLevel === 1) {
+    clearBubbles();
+  } else {
+    // Hanya stop spawner lama, bubble tetap di layar
+    if (bubbleInterval) { clearInterval(bubbleInterval); bubbleInterval = null; }
+  }
   questionActive = false;
   currentQuestion = null;
 
@@ -1809,25 +1849,41 @@ socket.on('round_starting', ({ round, roundInLevel, level, totalRoundsPerLevel }
   document.getElementById('round-num').textContent = roundInLevel || round;
   document.getElementById('rounds-total').textContent = totalRoundsPerLevel || 5;
   document.getElementById('level-num').textContent = level || 1;
-  document.getElementById('question-display').textContent = 'Get ready...';
-  document.getElementById('timer-bar').style.width = '100%';
+  document.getElementById('question-display').textContent = 'Next question...';
+  if (roundInLevel === 1) document.getElementById('timer-bar').style.width = '100%';
 
-  overlay.classList.add('visible');
-  setTimeout(() => overlay.classList.remove('visible'), 2800);
+  // Overlay "Round X" hanya ditampilkan di soal pertama, soal 2–5 overlay singkat/tidak tampil
+  if (roundInLevel === 1) {
+    overlay.classList.add('visible');
+    setTimeout(() => overlay.classList.remove('visible'), 2800);
+  }
 });
 
 socket.on('new_question', ({ round, roundInLevel, level, totalRoundsPerLevel, question, correct_answer, wrong_answers, equivalent_expressions, duration }) => {
   currentQuestion = { question, correct_answer, wrong_answers, equivalent_expressions };
   questionActive = true;
+  bubbleSpeedMultiplier = 1.0;
 
   document.getElementById('round-num').textContent = roundInLevel || round;
   document.getElementById('rounds-total').textContent = totalRoundsPerLevel || 5;
   document.getElementById('level-num').textContent = level || 1;
   document.getElementById('question-display').textContent = question;
-  startTimer(duration);
+
+  // Timer bar hanya aktif di soal pertama tiap level
+  const isFirstQuestion = (roundInLevel === 1);
+  const timerBarWrap = document.querySelector('.timer-bar-wrap');
+  if (isFirstQuestion) {
+    if (timerBarWrap) timerBarWrap.style.opacity = '1';
+    startTimer(duration);
+  } else {
+    // Soal 2–5: sembunyikan timer bar, hentikan timer
+    if (timerInterval) clearInterval(timerInterval);
+    if (timerBarWrap) timerBarWrap.style.opacity = '0';
+  }
 
   if (!isHost) {
     if (!animFrame) animateBubbles();
+    // Lanjutkan spawner dengan soal baru (bubble lama tetap ada)
     startBubbleSpawner(currentQuestion);
   }
 });
@@ -1837,6 +1893,10 @@ socket.on('bubble_popped', ({ playerId, bubbleId, correct }) => {
   if (playerId !== myId) {
     // Could add other player effects here
   }
+});
+
+socket.on('wrong_answer_penalty', () => {
+  // Server confirms wrong answer — speed already increased client-side, nothing extra needed
 });
 
 socket.on('leaderboard_update', ({ leaderboard }) => {
@@ -1864,7 +1924,7 @@ socket.on('player_disconnected', ({ name }) => {
 socket.on('round_ended', ({ round }) => {
   questionActive = false;
   if (timerInterval) clearInterval(timerInterval);
-  clearBubbles();
+  // Bubble lama TETAP ada — tidak di-clear saat ganti soal
 });
 
 socket.on('level_complete', ({ level, nextLevel, leaderboard }) => {

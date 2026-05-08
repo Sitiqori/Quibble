@@ -26,13 +26,13 @@ const LEVEL_CONFIG = {
     name: 'Pemula',
     desc: 'very easy: addition and subtraction only, numbers 1–20, e.g. "What is 7 + 5?" or "What is 13 − 6?"',
     topics: ['addition 1-20', 'subtraction 1-20'],
-    rounds: 3,
+    rounds: 5,
   },
   2: {
     name: 'Mudah',
     desc: 'easy: addition and subtraction with numbers 10–99, e.g. "What is 34 + 47?" or "What is 85 − 29?"',
     topics: ['addition 10-99', 'subtraction 10-99'],
-    rounds: 4,
+    rounds: 5,
   },
   3: {
     name: 'Menengah',
@@ -50,7 +50,7 @@ const LEVEL_CONFIG = {
     name: 'Expert',
     desc: 'very hard: exponents, square roots, basic algebra, or number sequences, e.g. "What is 3⁴?", "What is √144?", "If 4x = 36, what is x?", "What is the next number: 2, 4, 8, 16, __?"',
     topics: ['exponents', 'square roots', 'algebra', 'sequences'],
-    rounds: 6,
+    rounds: 5,
   },
 };
 
@@ -236,14 +236,40 @@ io.on('connection', (socket) => {
       player.score += 100;
       player.bubbleLevel = Math.max(0, player.bubbleLevel - 15);
       io.to(code).emit('bubble_popped', { playerId: socket.id, bubbleId, correct: true });
+      emitLeaderboard(code);
+
+      // Advance to next round immediately on correct answer
+      if (room.questionTimer) {
+        clearTimeout(room.questionTimer);
+        room.questionTimer = null;
+      }
+      io.to(code).emit('round_ended', { round: room.round });
+      setTimeout(async () => {
+        if (!rooms[code] || rooms[code].status !== 'playing') return;
+        const currentLevel = room.level || 1;
+        const roundsThisLevel = (LEVEL_CONFIG[currentLevel] || LEVEL_CONFIG[3]).rounds;
+        if (rooms[code] && rooms[code].roundInLevel >= roundsThisLevel) {
+          rooms[code].status = 'level_complete';
+          io.to(code).emit('level_complete', {
+            level: rooms[code].level,
+            nextLevel: rooms[code].level + 1,
+            leaderboard: Object.values(rooms[code].players)
+              .sort((a, b) => b.score - a.score)
+              .map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive }))
+          });
+        } else {
+          await startRound(code);
+        }
+      }, 1500);
     } else {
       player.score = Math.max(0, player.score - 30);
       player.bubbleLevel = Math.min(100, player.bubbleLevel + 10);
       io.to(code).emit('bubble_popped', { playerId: socket.id, bubbleId, correct: false });
+      // Signal client to speed up bubbles on wrong answer
+      socket.emit('wrong_answer_penalty');
+      emitLeaderboard(code);
+      checkElimination(code, socket.id);
     }
-
-    emitLeaderboard(code);
-    checkElimination(code, socket.id);
   });
 
   // Bubble reaches top (level increase)
@@ -450,7 +476,7 @@ function emitLeaderboard(code) {
       rank: i + 1,
       id: p.id,
       name: p.name,
-      score: p.score,
+      score: p.score, 
       alive: p.alive,
       bubbleLevel: p.bubbleLevel,
     }));
