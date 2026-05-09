@@ -18,7 +18,7 @@ npm install
 node server.js
 
 # Run with Gemini AI questions
-GEMINI_API_KEY=API_DISINI node server.js
+GEMINI_API_KEY="MASUKKAN_TOKEN_DISINI" node server.js
 ```
 
 Server starts at: **http://localhost:3000**

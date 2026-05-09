@@ -254,10 +254,11 @@ io.on('connection', (socket) => {
             level: rooms[code].level,
             nextLevel: rooms[code].level + 1,
             leaderboard: Object.values(rooms[code].players)
+              .filter(p => p.id !== rooms[code].host)
               .sort((a, b) => b.score - a.score)
               .map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive }))
-          });
-        } else {
+        });
+      } else {
           await startRound(code);
         }
       }, 1500);

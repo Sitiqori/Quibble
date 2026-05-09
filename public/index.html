@@ -937,11 +937,11 @@ input[type=text]:focus {
       <div class="section-title">Game Settings</div>
       <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:16px; margin-top:16px;">
         <div style="background:var(--surface2); border-radius:12px; padding:16px; font-size:13px; line-height:1.8; color:var(--text-muted);">
-          🫧 Pop bubbles with correct answers<br>
-          ✅ Correct: <span style="color:var(--green)">+100 pts</span><br>
-          ❌ Wrong: <span style="color:var(--red)">-30 pts & +danger</span><br>
-          ☠️ Screen fills up → eliminated!<br>
-          🏆 Last player standing wins
+          🫧 Pecahkan bubbles berisi jawaban yang benar<br>
+          ✅ Jawaban benar : <span style="color:var(--green)">+100 pts</span><br>
+          ❌ Jawaban salah: <span style="color:var(--red)">-30 pts & +danger</span><br>
+          ☠️ Layar penuh → tereliminasi!<br>
+          🏆 Pemain terakhir yang tersisa menang
         </div>
         <div class="lobby-actions" id="lobby-actions"></div>
       </div>
@@ -1319,10 +1319,10 @@ const arena = () => document.getElementById('bubble-arena');
 
 function getBubbleSizeForText(text) {
   const len = String(text).length;
-  if (len <= 2) return 80;
-  if (len <= 4) return 88;
-  if (len <= 6) return 96;
-  return 108;
+  if (len <= 2) return 100;
+  if (len <= 4) return 110;
+  if (len <= 6) return 120;
+  return 130;
 }
 
 function spawnBubble({ type, answer, id }) {
@@ -1331,16 +1331,15 @@ function spawnBubble({ type, answer, id }) {
   if (!a) return;
 
   const aW = a.clientWidth  || (window.innerWidth  - 220);
-  const size = getBubbleSizeForText(String(answer || ''));
-
+  const size = type === 'empty' ? 36 : getBubbleSizeForText(String(answer || ''));
   const el = document.createElement('div');
   const colorIdx = Math.floor(Math.random() * 10);
-  el.className = 'bubble ' + type + ' color-' + colorIdx;
+  el.className = 'bubble ' + type + (type === 'empty' ? '' : ' color-' + colorIdx);
   el.style.width  = size + 'px';
   el.style.height = size + 'px';
-  el.style.fontSize = Math.max(14, Math.min(26, size * 0.25)) + 'px';
-  el.textContent = String(answer || '○');
-
+  el.style.fontSize = type === 'empty' ? '0px' : Math.max(14, Math.min(26, size * 0.25)) + 'px';
+  el.textContent = type === 'empty' ? '' : String(answer || '');
+ 
   // === SPREAD SPAWN: bagi arena jadi kolom, pilih kolom paling kosong ===
   const padding = 8;
   const usableW = aW - padding * 2;
@@ -1376,7 +1375,7 @@ function spawnBubble({ type, answer, id }) {
   el.style.left = x + 'px';
   el.style.top  = startY + 'px';
 
-  const vy = (6.0 + Math.random() * 3.0) * bubbleSpeedMultiplier;
+ const vy = (0.3 + Math.random() * 0.4) * bubbleSpeedMultiplier;
 
   el.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1488,7 +1487,8 @@ function animateBubbles() {
     if (b.settled) return;
 
     // Gravity
-    b.vy = Math.min((b.vy || 6.0) + 0.25 * bubbleSpeedMultiplier, 14.0 * bubbleSpeedMultiplier);
+    b.vy = Math.min((b.vy || 0.5) + 0.02 * bubbleSpeedMultiplier, 4.0 * bubbleSpeedMultiplier);
+    b.vy += (Math.random() - 0.5) * 0.08; 
 
     // ── SLIDING: cari posisi X terbaik (settle paling bawah) ──
     // Dilakukan SETIAP frame biar responsif
@@ -1540,20 +1540,14 @@ function animateBubbles() {
   });
 
   // Danger zone: cek semua bubble (settled atau tidak) yang posisinya di atas garis
-  if (questionActive) {
-    const aboveDanger = [...bubbles.values()].filter(b => b.y < dangerLineY).length;
+  if (questionActive && isAlive && !isHost) {
+    const aboveDanger = [...bubbles.values()].filter(b => b.y < dangerLineY && b.settled).length;
     const dangerEl = document.getElementById('danger-line');
     if (aboveDanger > 0) {
       if (dangerEl) dangerEl.style.background = 'rgba(255,77,109,1)';
-      if (!animateBubbles._dangerTick) animateBubbles._dangerTick = 0;
-      animateBubbles._dangerTick++;
-      if (animateBubbles._dangerTick >= 60) {
-        animateBubbles._dangerTick = 0;
-        socket.emit('bubble_overflow', { code: myRoom, amount: aboveDanger * 2 });
-      }
+      socket.emit('bubble_overflow', { code: myRoom, amount: 100 });
     } else {
       if (dangerEl) dangerEl.style.background = 'rgba(255,77,109,0.7)';
-      animateBubbles._dangerTick = 0;
     }
   }
 
@@ -1564,16 +1558,24 @@ function animateBubbles() {
 const activeBubbleAnswers = new Set();
 let bubbleSpeedMultiplier = 1.0;
 
-function buildBubblePool(question) {
-  // Build a pool: 1 correct + all wrong answers, no duplicates
+function buildBubblePool(question, exclude = []) {
+  const correct = Number(question.correct_answer);
+  const used = new Set([correct, ...exclude.map(Number)]);
   const pool = [];
+
   pool.push({ type: 'correct', answer: String(question.correct_answer) });
-  question.wrong_answers.forEach(a => {
-    if (String(a) !== String(question.correct_answer)) {
-      pool.push({ type: 'wrong', answer: String(a) });
+
+  let attempts = 0;
+  while (pool.length < 10 && attempts < 200) {
+    attempts++;
+    const offset = Math.floor(Math.random() * 30) + 1;
+    const candidate = Math.random() < 0.5 ? correct + offset : Math.max(1, correct - offset);
+    if (!used.has(candidate)) {
+      used.add(candidate);
+      pool.push({ type: 'wrong', answer: String(candidate) });
     }
-  });
-  // Shuffle pool
+  }
+
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -1583,43 +1585,54 @@ function buildBubblePool(question) {
 
 function startBubbleSpawner(question) {
   if (bubbleInterval) clearInterval(bubbleInterval);
-  // TIDAK reset activeBubbleAnswers — bubble lama tetap di layar
   bubbleSpeedMultiplier = 1.0;
 
-  let pool = buildBubblePool(question);
-  let poolIndex = 0;
+ const correct = Number(question.correct_answer);
+  const usedAnswers = new Set([correct]);
 
-  const spawnOne = () => {
-    if (!questionActive) return;
-
-    // Rebuild pool when exhausted
-    if (poolIndex >= pool.length) {
-      pool = buildBubblePool(question);
-      poolIndex = 0;
-    }
-
-    // Find next pool entry whose answer is NOT currently on screen
-    let found = null;
-    for (let attempts = 0; attempts < pool.length; attempts++) {
-      const candidate = pool[(poolIndex + attempts) % pool.length];
-      if (!activeBubbleAnswers.has(candidate.answer)) {
-        found = candidate;
-        poolIndex = (poolIndex + attempts + 1) % pool.length;
-        break;
-      }
-    }
-    if (!found) return; // all answers already on screen, wait
-
-    bubbleIdCounter++;
-    activeBubbleAnswers.add(found.answer);
-    spawnBubble({ type: found.type, answer: found.answer, id: bubbleIdCounter });
+  const getNextAnswer = () => {
+    let candidate;
+    let attempts = 0;
+    do {
+      const offset = Math.floor(Math.random() * 30) + 1;
+      candidate = Math.random() < 0.5 ? correct + offset : Math.max(1, correct - offset);
+      attempts++;
+      if (attempts > 100) { usedAnswers.clear(); usedAnswers.add(correct); }
+    } while (usedAnswers.has(candidate));
+    usedAnswers.add(candidate);
+    return String(candidate);
   };
 
-  // Spawn initial batch
-  for (let i = 0; i < 6; i++) {
-    setTimeout(spawnOne, i * 120);
-  }
-  bubbleInterval = setInterval(spawnOne, 500);
+  let wrongSpawnedCount = 0;
+  const correctAfter = Math.floor(Math.random() * 6) + 5; // muncul setelah 5-10 wrong/empty
+  let correctSpawned = false;
+
+  const spawnOneBubble = () => {
+    if (!questionActive) return;
+
+    if (!correctSpawned && wrongSpawnedCount >= correctAfter) {
+      correctSpawned = true;
+      bubbleIdCounter++;
+      spawnBubble({ type: 'correct', answer: String(question.correct_answer), id: bubbleIdCounter });
+      return;
+    }
+
+    const roll = Math.random();
+    if (roll < 0.2) {
+      bubbleIdCounter++;
+      spawnBubble({ type: 'empty', answer: '', id: bubbleIdCounter });
+    } else {
+      wrongSpawnedCount++;
+      bubbleIdCounter++;
+      spawnBubble({ type: 'wrong', answer: getNextAnswer(), id: bubbleIdCounter });
+    }
+  };
+
+  bubbleInterval = setInterval(() => {
+    if (!questionActive) return;
+    const count = Math.random() < 0.4 ? 1 : Math.random() < 0.7 ? 2 : 3;
+    for (let i = 0; i < count; i++) spawnOneBubble();
+  }, 900);
 }
 
 function clearBubbles() {
@@ -1661,7 +1674,13 @@ function renderLeaderboard(data) {
   if (!list) return;
   list.innerHTML = '';
 
-  data.forEach((p, i) => {
+  const seen = new Set();
+  const uniqueData = data.filter(p => {
+    if (seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+  uniqueData.forEach((p, i) => {
     const div = document.createElement('div');
     div.className = `lb-item ${p.id === myId ? 'me' : ''} ${!p.alive ? 'eliminated' : ''}`;
 
@@ -1860,9 +1879,17 @@ socket.on('round_starting', ({ round, roundInLevel, level, totalRoundsPerLevel }
 });
 
 socket.on('new_question', ({ round, roundInLevel, level, totalRoundsPerLevel, question, correct_answer, wrong_answers, equivalent_expressions, duration }) => {
-  currentQuestion = { question, correct_answer, wrong_answers, equivalent_expressions };
+  currentQuestion = { question, correct_answer, wrong_answers, equivalent_expressions, _round: roundInLevel };
   questionActive = true;
-  bubbleSpeedMultiplier = 1.0;
+   bubbleSpeedMultiplier = 1.0;
+  myBubbleLevel = 0;
+  activeBubbleAnswers.clear();
+  const barEl = document.getElementById('my-level-bar');
+  const pctEl = document.getElementById('bubble-pct');
+  if (barEl) { barEl.style.width = '0%'; barEl.className = 'level-bar'; }
+  if (pctEl) pctEl.textContent = '0%';
+  const vign = document.getElementById('danger-vignette');
+  if (vign) vign.style.opacity = '0';
 
   document.getElementById('round-num').textContent = roundInLevel || round;
   document.getElementById('rounds-total').textContent = totalRoundsPerLevel || 5;
@@ -1882,8 +1909,11 @@ socket.on('new_question', ({ round, roundInLevel, level, totalRoundsPerLevel, qu
   }
 
   if (!isHost) {
-    if (!animFrame) animateBubbles();
-    // Lanjutkan spawner dengan soal baru (bubble lama tetap ada)
+    bubbles.forEach(b => b.el.remove());
+    bubbles.clear();
+    if (bubbleInterval) { clearInterval(bubbleInterval); bubbleInterval = null; }
+    animFrame = null;
+    animateBubbles();
     startBubbleSpawner(currentQuestion);
   }
 });
