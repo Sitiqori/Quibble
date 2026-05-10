@@ -894,6 +894,34 @@ input[type=text]:focus {
   .lb-score { display: none; }
   .lobby-layout { grid-template-columns: 1fr; }
 }
+
+/* ─── Auth Screens ─── */
+.auth-screen { flex-direction: column; gap: 0; align-items: center; justify-content: flex-start; overflow-y: auto; padding: 16px 0 24px; }
+.auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 28px 32px; width: min(400px, 92vw); box-shadow: var(--shadow), 0 0 60px rgba(108,99,255,0.12); display: flex; flex-direction: column; gap: 13px; margin: auto 0; }
+.auth-title { font-size: 20px; font-weight: 900; color: var(--text); text-align: center; }
+.auth-subtitle { font-size: 12px; color: var(--text-muted); text-align: center; font-weight: 600; margin-top: -8px; }
+.auth-field { display: flex; flex-direction: column; gap: 6px; }
+.auth-field label { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); }
+.auth-field input { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; padding: 10px 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; }
+.auth-field input::placeholder { color: var(--text-muted); font-weight: 600; }
+.auth-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(168,85,247,0.18); }
+.auth-field input.error-input { border-color: var(--red); box-shadow: 0 0 0 3px rgba(255,77,109,0.15); }
+.auth-error { background: rgba(255,77,109,0.12); border: 1px solid rgba(255,77,109,0.3); border-radius: 10px; color: #ff8fa3; font-size: 13px; font-weight: 700; padding: 10px 14px; text-align: center; display: none; }
+.auth-error.visible { display: block; }
+.auth-success { background: rgba(34,211,165,0.12); border: 1px solid rgba(34,211,165,0.3); border-radius: 10px; color: var(--green); font-size: 13px; font-weight: 700; padding: 10px 14px; text-align: center; display: none; }
+.auth-success.visible { display: block; }
+.auth-switch { text-align: center; font-size: 13px; color: var(--text-muted); font-weight: 600; }
+.auth-switch a { color: var(--accent); cursor: pointer; text-decoration: none; font-weight: 800; }
+.auth-switch a:hover { text-decoration: underline; }
+.user-badge { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 50px; padding: 8px 18px 8px 10px; margin-bottom: 12px; }
+.user-avatar { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: white; flex-shrink: 0; }
+.user-badge-info { display: flex; flex-direction: column; }
+.user-badge-name { font-size: 14px; font-weight: 800; color: var(--text); }
+.user-badge-sub { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+.btn-logout { background: transparent; border: 1.5px solid rgba(255,77,109,0.4); border-radius: 8px; color: var(--red); font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800; padding: 5px 10px; cursor: pointer; margin-left: auto; transition: background 0.2s; }
+.btn-logout:hover { background: rgba(255,77,109,0.1); }
+.btn-loading { opacity: 0.7; pointer-events: none; }
+
 </style>
 </head>
 <body>
@@ -901,12 +929,74 @@ input[type=text]:focus {
 <canvas id="confetti-canvas"></canvas>
 <div class="toast" id="toast"></div>
 
+
+<!-- ════════════════════════════════════════════ LOGIN SCREEN -->
+<div class="screen auth-screen" id="login-screen">
+  <div class="auth-card">
+    <div style="text-align:center; margin-bottom:4px;">
+      <div class="logo" style="font-size:40px;">🫧</div>
+      <div class="logo-sub" style="margin-top:4px;">QUIBBLE</div>
+    </div>
+    <div class="auth-title">Selamat Datang!</div>
+    <div class="auth-subtitle">Masuk untuk mulai bermain</div>
+    <div class="auth-error" id="login-error"></div>
+    <div class="auth-success" id="login-success"></div>
+    <div class="auth-field">
+      <label>Username</label>
+      <input type="text" id="login-username" placeholder="Masukkan username..." maxlength="20" autocomplete="username">
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="Masukkan password..." maxlength="50" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">🔐 Masuk</button>
+    <div class="auth-switch">
+      Belum punya akun? <a onclick="showScreen('register-screen')">Daftar di sini →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ REGISTER SCREEN -->
+<div class="screen hidden auth-screen" id="register-screen">
+  <div class="auth-card">
+    <div style="text-align:center; margin-bottom:4px;">
+      <div class="logo" style="font-size:40px;">🫧</div>
+      <div class="logo-sub" style="margin-top:4px;">QUIBBLE</div>
+    </div>
+    <div class="auth-title">Buat Akun Baru</div>
+    <div class="auth-subtitle">Daftar gratis, langsung main!</div>
+    <div class="auth-error" id="register-error"></div>
+    <div class="auth-success" id="register-success"></div>
+    <div class="auth-field">
+      <label>Nama Tampil</label>
+      <input type="text" id="register-display" placeholder="Nama yang tampil saat bermain..." maxlength="20" autocomplete="nickname">
+    </div>
+    <div class="auth-field">
+      <label>Username</label>
+      <input type="text" id="register-username" placeholder="Huruf, angka, underscore (3–20 karakter)" maxlength="20" autocomplete="username">
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="register-password" placeholder="Minimal 6 karakter..." maxlength="50" autocomplete="new-password">
+    </div>
+    <div class="auth-field">
+      <label>Konfirmasi Password</label>
+      <input type="password" id="register-confirm" placeholder="Ulangi password..." maxlength="50" autocomplete="new-password">
+    </div>
+    <button class="btn btn-primary" id="register-btn" onclick="doRegister()">✨ Daftar Sekarang</button>
+    <div class="auth-switch">
+      Sudah punya akun? <a onclick="showScreen('login-screen')">← Masuk di sini</a>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════ HOME SCREEN -->
-<div class="screen" id="home-screen">
+<div class="screen hidden" id="home-screen">
   <div class="logo-wrap">
     <div class="logo">🫧 Quibble</div>
     <div class="logo-sub">Math Bubble Battle</div>
   </div>
+  <div id="user-badge" class="user-badge"></div>
   <div class="home-card">
     <div class="input-group">
       <label class="section-title">Your Name</label>
@@ -2076,14 +2166,189 @@ const style = document.createElement('style');
 style.textContent = '@keyframes fadeQuick { from{opacity:1} to{opacity:0} }';
 document.head.appendChild(style);
 
+
+</script>
+<script>
+// ─── Auth State ───────────────────────────────────────────────────────────────
+let currentUser = null;
+
+function loadUserSession() {
+  const saved = localStorage.getItem('quibble_user');
+  if (saved) {
+    try { currentUser = JSON.parse(saved); } catch(e) { currentUser = null; }
+  }
+}
+
+function saveUserSession(user) {
+  currentUser = user;
+  localStorage.setItem('quibble_user', JSON.stringify(user));
+}
+
+function clearUserSession() {
+  currentUser = null;
+  localStorage.removeItem('quibble_user');
+}
+
+// ─── Auth UI Helpers ──────────────────────────────────────────────────────────
+function setAuthError(elId, msg) {
+  const el = document.getElementById(elId);
+  el.textContent = msg;
+  el.classList.toggle('visible', !!msg);
+}
+
+function setAuthSuccess(elId, msg) {
+  const el = document.getElementById(elId);
+  el.textContent = msg;
+  el.classList.toggle('visible', !!msg);
+}
+
+function setLoading(btnId, loading, label) {
+  const btn = document.getElementById(btnId);
+  btn.classList.toggle('btn-loading', loading);
+  if (label) btn.textContent = label;
+}
+
+// ─── Register ─────────────────────────────────────────────────────────────────
+async function doRegister() {
+  const displayName = document.getElementById('register-display').value.trim();
+  const username    = document.getElementById('register-username').value.trim();
+  const password    = document.getElementById('register-password').value;
+  const confirm     = document.getElementById('register-confirm').value;
+
+  setAuthError('register-error', '');
+  setAuthSuccess('register-success', '');
+
+  if (!displayName || !username || !password || !confirm) {
+    return setAuthError('register-error', 'Semua field wajib diisi.');
+  }
+  if (password !== confirm) {
+    return setAuthError('register-error', 'Konfirmasi password tidak cocok.');
+  }
+
+  const btn = document.getElementById('register-btn');
+  btn.textContent = '⏳ Mendaftar...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, displayName })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthError('register-error', data.error || 'Registrasi gagal.');
+    } else {
+      setAuthSuccess('register-success', '✅ ' + data.message + ' Silakan masuk.');
+      document.getElementById('register-display').value = '';
+      document.getElementById('register-username').value = '';
+      document.getElementById('register-password').value = '';
+      document.getElementById('register-confirm').value = '';
+      setTimeout(() => showScreen('login-screen'), 1500);
+    }
+  } catch(e) {
+    setAuthError('register-error', '❌ Tidak dapat terhubung ke server. Pastikan server sudah jalan di port 3000.');
+  } finally {
+    btn.textContent = '✨ Daftar Sekarang';
+    btn.disabled = false;
+  }
+}
+
+// ─── Login ────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  setAuthError('login-error', '');
+  setAuthSuccess('login-success', '');
+
+  if (!username || !password) {
+    return setAuthError('login-error', 'Username dan password wajib diisi.');
+  }
+
+  const btn = document.getElementById('login-btn');
+  btn.textContent = '⏳ Masuk...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthError('login-error', data.error || 'Login gagal.');
+    } else {
+      saveUserSession(data.user);
+      setAuthSuccess('login-success', '✅ Login berhasil! Selamat datang, ' + data.user.displayName + '!');
+      setTimeout(() => goToHome(), 800);
+    }
+  } catch(e) {
+    setAuthError('login-error', '❌ Tidak dapat terhubung ke server. Pastikan server sudah jalan di port 3000.');
+  } finally {
+    btn.textContent = '🔐 Masuk';
+    btn.disabled = false;
+  }
+}
+
+// ─── Logout ───────────────────────────────────────────────────────────────────
+function doLogout() {
+  clearUserSession();
+  showScreen('login-screen');
+}
+
+// ─── Go to Home (after login) ─────────────────────────────────────────────────
+function goToHome() {
+  if (!currentUser) { showScreen('login-screen'); return; }
+  // Pre-fill player name from displayName
+  const nameInput = document.getElementById('player-name');
+  if (nameInput && currentUser.displayName) nameInput.value = currentUser.displayName;
+  // Render user badge
+  renderUserBadge();
+  showScreen('home-screen');
+}
+
+function renderUserBadge() {
+  const badge = document.getElementById('user-badge');
+  if (!badge || !currentUser) return;
+  const initials = currentUser.displayName.substring(0,2).toUpperCase();
+  badge.innerHTML = `
+    <div class="user-avatar">${initials}</div>
+    <div class="user-badge-info">
+      <div class="user-badge-name">${currentUser.displayName}</div>
+      <div class="user-badge-sub">@${currentUser.username}</div>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">Keluar</button>
+  `;
+}
+
 // Enter key support
-document.getElementById('room-code-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') joinRoom();
-});
-document.getElementById('player-name').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const code = document.getElementById('room-code-input').value.trim();
-    if (code) joinRoom(); else createRoom();
+document.addEventListener('DOMContentLoaded', () => {
+  loadUserSession();
+
+  document.getElementById('login-password')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('login-username')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('login-password').focus();
+  });
+  document.getElementById('register-confirm')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doRegister();
+  });
+  document.getElementById('room-code-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') joinRoom();
+  });
+  document.getElementById('player-name')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const code = document.getElementById('room-code-input').value.trim();
+      if (code) joinRoom(); else createRoom();
+    }
+  });
+
+  // Check for existing session
+  if (currentUser) {
+    goToHome();
+  } else {
+    showScreen('login-screen');
   }
 });
 </script>
