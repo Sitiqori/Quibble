@@ -247,6 +247,18 @@ Rules:
 io.on('connection', (socket) => {
   console.log('Connected:', socket.id);
 
+  // Chat lobby
+  socket.on('lobby_chat', ({ code, username, message }, callback) => {
+    if (callback) callback('received');
+    if (!message || !message.trim() || !code) return;
+    const msg = {
+      username,
+      message: message.trim().substring(0, 200),
+      time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+    };
+    io.emit('lobby_chat_message', msg);
+  });
+
   // Create Room
   socket.on('create_room', ({ playerName }) => {
     const code = generateCode();

@@ -1033,6 +1033,19 @@ input[type=text]:focus {
           ☠️ Layar penuh → tereliminasi!<br>
           🏆 Pemain terakhir yang tersisa menang
         </div>
+        <div class="lobby-chat-box" id="lobby-chat-box" style="
+          flex:1; overflow-y:auto; background:var(--surface2); border-radius:12px;
+          padding:12px; display:flex; flex-direction:column; gap:6px;
+          min-height:120px; max-height:200px; margin-bottom:10px;
+        ">
+          <div style="color:var(--text-muted);font-size:12px;font-weight:700;text-align:center;">Chat Lobby</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input type="text" id="chat-input" placeholder="Ketik pesan..." maxlength="200"
+            style="flex:1;padding:10px 14px;font-size:13px;"
+            onkeydown="if(event.key==='Enter') sendLobbyChat()">
+          <button class="btn btn-primary" onclick="sendLobbyChat()" style="padding:10px 16px;font-size:13px;">Kirim</button>
+        </div>
         <div class="lobby-actions" id="lobby-actions"></div>
       </div>
     </div>
@@ -1390,7 +1403,8 @@ function renderLobby(state) {
 
   const actions = document.getElementById('lobby-actions');
   actions.innerHTML = '';
-  if (isHost) {
+ 
+  if (isHost) { 
     const btn = document.createElement('button');
     btn.className = 'btn btn-success';
     btn.textContent = '▶ Start Game!';
@@ -1884,6 +1898,44 @@ function launchConfetti() {
 // ═══════════════════════════════════════════════════════════════════
 // SOCKET EVENTS
 // ═══════════════════════════════════════════════════════════════════
+function sendLobbyChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  console.log('sendLobbyChat called', { msg, myRoom, myName });
+  if (!msg || !myRoom) return;
+  const username = myName || (currentUser?.displayName) || 'Anonymous';
+  socket.emit('lobby_chat', { code: myRoom, username, message: msg }, (response) => {
+    console.log('server ack:', response);
+  });
+  input.value = '';
+}
+
+socket.on('lobby_chat_message', ({ username, message, time }) => {
+  console.log('lobby_chat_message received', { username, message, time });
+  let box = document.getElementById('lobby-chat-box');
+  if (!box) {
+    console.log('box not found, retrying...');
+    setTimeout(() => {
+      box = document.getElementById('lobby-chat-box');
+      if (box) {
+        const div = document.createElement('div');
+        div.style.cssText = 'font-size:13px;font-weight:600;line-height:1.4;';
+        const isMe = username === myName;
+        div.innerHTML = `<span style="color:${isMe ? 'var(--cyan)' : 'var(--accent)'}; font-weight:800;">${escapeHtml(username)}</span> <span style="color:var(--text-muted);font-size:11px;">${time}</span><br>${escapeHtml(message)}`;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+      }
+    }, 500);
+    return;
+  }
+  const div = document.createElement('div');
+  div.style.cssText = 'font-size:13px;font-weight:600;line-height:1.4;';
+  const isMe = username === myName;
+  div.innerHTML = `<span style="color:${isMe ? 'var(--cyan)' : 'var(--accent)'}; font-weight:800;">${escapeHtml(username)}</span> <span style="color:var(--text-muted);font-size:11px;">${time}</span><br>${escapeHtml(message)}`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+});
+
 socket.on('connect', () => { myId = socket.id; });
 
 socket.on('room_created', ({ code, player }) => {
