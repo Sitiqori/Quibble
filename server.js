@@ -277,6 +277,7 @@ io.on('connection', (socket) => {
       score: 0,
       alive: true,
       bubbleLevel: 0, // 0-100, elimination at 100
+      online: true,
     };
     socket.join(code);
     socket.emit('room_created', { code, player: rooms[code].players[socket.id] });
@@ -296,6 +297,7 @@ io.on('connection', (socket) => {
       score: 0,
       alive: true,
       bubbleLevel: 0,
+      online: true,
     };
     socket.join(code);
     socket.emit('room_joined', { code, player: room.players[socket.id] });
@@ -396,7 +398,7 @@ io.on('connection', (socket) => {
     io.to(code).emit('game_ended', {
       winner: winner ? { id: winner.id, name: winner.name, score: winner.score } : null,
       host: hostPlayer ? { id: hostPlayer.id, name: hostPlayer.name } : null,
-      leaderboard: nonHostPlayers.map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive }))
+      leaderboard: nonHostPlayers.map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive, online: p.online !== false }))
     });
     setTimeout(() => { delete rooms[code]; }, 60000);
   });
@@ -422,13 +424,26 @@ io.on('connection', (socket) => {
     for (const code in rooms) {
       const room = rooms[code];
       if (room.players[socket.id]) {
-        room.players[socket.id].alive = false;
-        room.players[socket.id].disconnected = true;
-        io.to(code).emit('player_disconnected', { playerId: socket.id, name: room.players[socket.id].name });
+        const player = room.players[socket.id];
+        player.online = false;
+        player.disconnected = true;
+        // TIDAK ubah alive — game tetap jalan, player offline masih "hidup" di leaderboard
+        io.to(code).emit('player_disconnected', { playerId: socket.id, name: player.name });
         emitRoomState(code);
         emitLeaderboard(code);
-        if (room.status === 'playing') checkGameEnd(code);
-        // If host disconnects, assign new host
+
+        if (room.status === 'playing') {
+          // Game berhenti HANYA kalau semua pemain non-host sudah offline
+          const onlinePlayers = Object.values(room.players).filter(
+            p => p.id !== room.host && !p.disconnected
+          );
+          if (onlinePlayers.length === 0) {
+            checkGameEnd(code);
+          }
+          // Kalau masih ada yang online → game lanjut terus, tidak perlu apa-apa
+        }
+
+        // Kalau host disconnect → pindah host ke player online lain
         if (room.host === socket.id) {
           const others = Object.keys(room.players).filter(id => id !== socket.id && !room.players[id].disconnected);
           if (others.length > 0) {
@@ -446,7 +461,9 @@ async function startRound(code) {
   const room = rooms[code];
   if (!room || room.status !== 'playing') return;
   
-  const alivePlayers = Object.values(room.players).filter(p => p.alive);
+  // Hitung pemain (non-host) yang masih alive — termasuk yang offline
+  // Game stop hanya kalau tinggal 0 atau 1 pemain alive total
+  const alivePlayers = Object.values(room.players).filter(p => p.alive && p.id !== room.host);
   if (alivePlayers.length <= 1) return checkGameEnd(code);
 
   const currentLevel = room.level || 1;
@@ -522,10 +539,10 @@ function checkGameEnd(code) {
   const room = rooms[code];
   if (!room || room.status !== 'playing') return;
 
-  const alivePlayers = Object.values(room.players).filter(p => p.alive && !p.disconnected && p.id !== room.host);
+  // Pemain yang masih alive (belum dieliminasi), termasuk yang offline
+  const alivePlayers = Object.values(room.players).filter(p => p.alive && p.id !== room.host);
   
-  const totalPlayers = Object.values(room.players).filter(p => !p.disconnected).length;
-  // Game berakhir kalau sisa 1 atau 0 pemain hidup (dari minimal 2 total)
+  // Game berakhir kalau sisa 1 atau 0 pemain alive
   if (alivePlayers.length <= 1) {
     room.status = 'ended';
     clearTimeout(room.questionTimer);
@@ -546,6 +563,7 @@ function checkGameEnd(code) {
         name: p.name,
         score: p.score,
         alive: p.alive,
+        online: p.online !== false,
       }))
     });
 
@@ -578,6 +596,7 @@ function emitLeaderboard(code) {
       score: p.score, 
       alive: p.alive,
       bubbleLevel: p.bubbleLevel,
+      online: p.online !== false, // default true kalau belum ada field
     }));
   io.to(code).emit('leaderboard_update', { leaderboard });
 }

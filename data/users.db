@@ -1,5 +1,9 @@
 {"username":"nun","displayName":"nun","passwordHash":"$2b$10$uiAmq9SOt9PzS6L5V6FgpeeO.rb0TUXknxF2mWT9zgvIl3tOtuwUK","createdAt":"2026-05-10T16:15:39.043Z","gamesPlayed":0,"totalScore":0,"_id":"9z4HT8qt6vTOlaZ7"}
-{"$$indexCreated":{"fieldName":"username","unique":true,"sparse":false}}
+{"username":"riri123","displayName":"riri","passwordHash":"$2b$10$9gP5wINxX2QgkirYLxC49eXUFB8KEW/95hYHQDRxhsA/hcXRWdl/m","createdAt":"2026-05-11T03:36:19.442Z","gamesPlayed":0,"totalScore":0,"_id":"VFLiefn6PdDrkhLK"}
 {"username":"nono","displayName":"na","passwordHash":"$2b$10$U6QNdX5Pn/xhrWr5rRQuk.650Rt1Ww7wwpOwzJA4BABUhKamGY2l6","createdAt":"2026-05-10T16:35:15.188Z","gamesPlayed":0,"totalScore":0,"_id":"eJWAQ1kDFdvOGqc0"}
+{"username":"kaka123","displayName":"kaka","passwordHash":"$2b$10$KOLyvs3XAZu4J2LXciEVBOTQg6EkmrtTQg7xceSS8ZXCC.hWUmllu","createdAt":"2026-05-11T03:40:25.457Z","gamesPlayed":0,"totalScore":0,"_id":"lDGkp5TCjH8aSYvo"}
+{"username":"qori444","displayName":"qori","passwordHash":"$2b$10$zNNAVUnqCUznovhJMrpmH.wTVFYY7RA/WlSXZZ3VOF1RLh58IB4o.","createdAt":"2026-05-11T03:35:32.379Z","gamesPlayed":0,"totalScore":0,"_id":"nRg1pocmZEVDe1lo"}
 {"username":"jijij","displayName":"ne","passwordHash":"$2b$10$72TDNZ9mEXSVvVdsuzGgnOlgdJ.Hw/kJqiFLwW07U5h/NrWjP9kjK","createdAt":"2026-05-10T16:35:42.585Z","gamesPlayed":0,"totalScore":0,"_id":"osAgy5ukAcTSrHQ5"}
 {"username":"namas","displayName":"neru","passwordHash":"$2b$10$ThT5o5uZvn17VudNKMYdKulXjAZmZ4OCrFOBD0ac/hnR/wa6lNDue","createdAt":"2026-05-10T16:36:20.836Z","gamesPlayed":0,"totalScore":0,"_id":"zTbhGWJpY4p0A1kx"}
+{"$$indexCreated":{"fieldName":"username","unique":true,"sparse":false}}
+{"$$indexCreated":{"fieldName":"username","unique":true}}

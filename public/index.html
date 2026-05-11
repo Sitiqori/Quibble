@@ -663,6 +663,11 @@ input[type=text]:focus {
 .lb-item.eliminated {
   opacity: 0.4;
 }
+.lb-item.offline {
+  opacity: 0.55;
+  background: rgba(255,255,255,0.02);
+  border-left: 2px solid rgba(150,150,150,0.3);
+}
 
 .lb-rank {
   font-family: 'Fredoka One', cursive;
@@ -695,6 +700,45 @@ input[type=text]:focus {
   font-size: 14px;
   flex-shrink: 0;
 }
+
+/* Status badge di leaderboard */
+.lb-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.lb-status-badge.online {
+  background: rgba(34, 211, 165, 0.15);
+  color: #22d3a5;
+  border: 1px solid rgba(34, 211, 165, 0.3);
+}
+.lb-status-badge.offline {
+  background: rgba(150, 150, 150, 0.12);
+  color: #999;
+  border: 1px solid rgba(150, 150, 150, 0.25);
+}
+.lb-status-badge.eliminated {
+  background: rgba(255, 77, 109, 0.12);
+  color: #ff4d6d;
+  border: 1px solid rgba(255, 77, 109, 0.25);
+}
+.lb-status-badge::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.lb-status-badge.online::before { background: #22d3a5; box-shadow: 0 0 6px #22d3a5; }
+.lb-status-badge.offline::before { background: #888; }
+.lb-status-badge.eliminated::before { background: #ff4d6d; }
 
 .lb-level-fill {
   position: absolute;
@@ -851,7 +895,7 @@ input[type=text]:focus {
   font-size: 20px;
   color: var(--cyan);
 }
-.final-status { font-size: 18px; }
+.final-status { font-size: 14px; display: flex; align-items: center; }
 
 @keyframes vignetteFlicker {
   0% { filter: brightness(1); }
@@ -1786,18 +1830,29 @@ function renderLeaderboard(data) {
   });
   uniqueData.forEach((p, i) => {
     const div = document.createElement('div');
-    div.className = `lb-item ${p.id === myId ? 'me' : ''} ${!p.alive ? 'eliminated' : ''}`;
+    const isOffline = p.online === false;
+    div.className = `lb-item ${p.id === myId ? 'me' : ''} ${!p.alive ? 'eliminated' : ''} ${isOffline ? 'offline' : ''}`;
 
     const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
     const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
 
     const levelColor = p.bubbleLevel > 75 ? 'var(--red)' : p.bubbleLevel > 50 ? 'var(--yellow)' : 'var(--green)';
 
+    // Status badge: Online / Offline / Eliminated
+    let statusHtml = '';
+    if (isOffline) {
+      statusHtml = `<span class="lb-status-badge offline">Offline</span>`;
+    } else if (!p.alive) {
+      statusHtml = `<span class="lb-status-badge eliminated">Eliminated</span>`;
+    } else {
+      statusHtml = `<span class="lb-status-badge online">Online</span>`;
+    }
+
     div.innerHTML = `
       <span class="lb-rank ${rankClass}">${rankEmoji}</span>
       <span class="lb-name">${escapeHtml(p.name)}</span>
       <span class="lb-score">${p.score}</span>
-      <span class="lb-status">${p.alive ? '🟢' : '💀'}</span>
+      ${statusHtml}
       <div class="lb-level-fill" style="width:${p.bubbleLevel}%; background:${levelColor}"></div>
     `;
     list.appendChild(div);
@@ -2185,11 +2240,20 @@ socket.on('game_ended', ({ winner, leaderboard, host }) => {
     const div = document.createElement('div');
     div.className = 'final-lb-item';
     const medals = ['🥇','🥈','🥉'];
+    const isOffline = p.online === false;
+    let statusBadge = '';
+    if (isOffline) {
+      statusBadge = `<span class="lb-status-badge offline">Offline</span>`;
+    } else if (!p.alive) {
+      statusBadge = `<span class="lb-status-badge eliminated">Eliminated</span>`;
+    } else {
+      statusBadge = `<span class="lb-status-badge online">Online</span>`;
+    }
     div.innerHTML = `
       <div class="final-rank">${medals[i] || (i+1)}</div>
       <div class="final-name">${escapeHtml(p.name)}${p.id === myId ? ' (You)' : ''}</div>
       <div class="final-score">${p.score}</div>
-      <div class="final-status">${p.alive ? '🟢' : '💀'}</div>
+      <div class="final-status">${statusBadge}</div>
     `;
     finalList.appendChild(div);
   });
