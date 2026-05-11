@@ -344,7 +344,9 @@ io.on('connection', (socket) => {
         room.questionTimer = null;
       }
       io.to(code).emit('round_ended', { round: room.round });
-      setTimeout(async () => {
+
+      // Langsung lanjut ke soal berikutnya tanpa jeda
+      ;(async () => {
         if (!rooms[code] || rooms[code].status !== 'playing') return;
         const currentLevel = room.level || 1;
         const roundsThisLevel = (LEVEL_CONFIG[currentLevel] || LEVEL_CONFIG[3]).rounds;
@@ -357,11 +359,11 @@ io.on('connection', (socket) => {
               .filter(p => p.id !== rooms[code].host)
               .sort((a, b) => b.score - a.score)
               .map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive }))
-        });
-      } else {
+          });
+        } else {
           await startRound(code);
         }
-      }, 1500);
+      })();
     } else {
       player.score = Math.max(0, player.score - 30);
       player.bubbleLevel = Math.min(100, player.bubbleLevel + 10);
@@ -411,10 +413,7 @@ io.on('connection', (socket) => {
     room.level += 1;
     room.roundInLevel = 0;
     room.status = 'playing';
-    // Reset bubble levels for all alive players
-    Object.values(room.players).forEach(p => {
-      if (p.alive) p.bubbleLevel = 0;
-    });
+    // Bubble level TIDAK direset — akumulasi terus ke level berikutnya
     io.to(code).emit('level_started', { level: room.level });
     startRound(code);
   });
@@ -476,44 +475,40 @@ async function startRound(code) {
   const question = await generateQuestion(currentLevel);
   room.currentQuestion = question;
 
-  // Send question after brief delay
-  setTimeout(() => {
-    if (rooms[code]?.status !== 'playing') return;
-    io.to(code).emit('new_question', {
-      round: room.round,
-      roundInLevel: room.roundInLevel,
-      level: currentLevel,
-      totalRoundsPerLevel: roundsThisLevel,
-      question: question.question,
-      correct_answer: question.correct_answer,
-      wrong_answers: question.wrong_answers,
-      equivalent_expressions: question.equivalent_expressions,
-      duration: 30000
-    });
+  // Langsung kirim soal tanpa jeda
+  if (rooms[code]?.status !== 'playing') return;
+  io.to(code).emit('new_question', {
+    round: room.round,
+    roundInLevel: room.roundInLevel,
+    level: currentLevel,
+    totalRoundsPerLevel: roundsThisLevel,
+    question: question.question,
+    correct_answer: question.correct_answer,
+    wrong_answers: question.wrong_answers,
+    equivalent_expressions: question.equivalent_expressions,
+    duration: 30000
+  });
 
-    // Next round after 30 seconds
-    room.questionTimer = setTimeout(async () => {
-      if (!rooms[code] || rooms[code].status !== 'playing') return;
-      io.to(code).emit('round_ended', { round: room.round });
-      await new Promise(r => setTimeout(r, 2000));
+  // Next round after 30 seconds
+  room.questionTimer = setTimeout(async () => {
+    if (!rooms[code] || rooms[code].status !== 'playing') return;
+    io.to(code).emit('round_ended', { round: room.round });
 
-      // Check if level complete
-      if (rooms[code] && rooms[code].roundInLevel >= roundsThisLevel) {
-        clearTimeout(rooms[code].questionTimer);
-        rooms[code].status = 'level_complete';
-        io.to(code).emit('level_complete', {
-          level: rooms[code].level,
-          nextLevel: rooms[code].level + 1,
-          leaderboard: Object.values(rooms[code].players)
-            .sort((a, b) => b.score - a.score)
-            .map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive }))
-        });
-      } else {
-        await startRound(code);
-      }
-    }, 30000);
-
-  }, 3000);
+    // Langsung lanjut soal berikutnya tanpa jeda
+    if (rooms[code] && rooms[code].roundInLevel >= roundsThisLevel) {
+      clearTimeout(rooms[code].questionTimer);
+      rooms[code].status = 'level_complete';
+      io.to(code).emit('level_complete', {
+        level: rooms[code].level,
+        nextLevel: rooms[code].level + 1,
+        leaderboard: Object.values(rooms[code].players)
+          .sort((a, b) => b.score - a.score)
+          .map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive }))
+      });
+    } else {
+      await startRound(code);
+    }
+  }, 30000);
 }
 
 function checkElimination(code, playerId) {

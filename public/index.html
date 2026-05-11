@@ -2050,43 +2050,32 @@ socket.on('game_started', () => {
 
 socket.on('round_starting', ({ round, roundInLevel, level, totalRoundsPerLevel }) => {
   playRoundFanfare(round);
-  // Hanya bersihkan bubble di awal level (soal 1), soal 2–5 bubble lama tetap ada
-  if (roundInLevel === 1) {
-    clearBubbles();
-  } else {
-    // Hanya stop spawner lama, bubble tetap di layar
-    if (bubbleInterval) { clearInterval(bubbleInterval); bubbleInterval = null; }
-  }
   questionActive = false;
   currentQuestion = null;
+  if (bubbleInterval) { clearInterval(bubbleInterval); bubbleInterval = null; }
 
-  const overlay = document.getElementById('round-overlay');
-  document.getElementById('round-overlay-num').textContent = roundInLevel || round;
   document.getElementById('round-num').textContent = roundInLevel || round;
   document.getElementById('rounds-total').textContent = totalRoundsPerLevel || 5;
   document.getElementById('level-num').textContent = level || 1;
-  document.getElementById('question-display').textContent = 'Next question...';
-  if (roundInLevel === 1) document.getElementById('timer-bar').style.width = '100%';
 
-  // Overlay "Round X" hanya ditampilkan di soal pertama, soal 2–5 overlay singkat/tidak tampil
+  // Overlay "Round X" hanya di soal pertama tiap level, soal 2+ langsung ganti soal
   if (roundInLevel === 1) {
+    clearBubbles();
+    document.getElementById('timer-bar').style.width = '100%';
+    const overlay = document.getElementById('round-overlay');
+    document.getElementById('round-overlay-num').textContent = 1;
     overlay.classList.add('visible');
-    setTimeout(() => overlay.classList.remove('visible'), 2800);
+    setTimeout(() => overlay.classList.remove('visible'), 2000);
   }
+  // Soal selanjutnya: tidak ada overlay, tidak ada jeda, langsung soal baru via new_question
 });
 
 socket.on('new_question', ({ round, roundInLevel, level, totalRoundsPerLevel, question, correct_answer, wrong_answers, equivalent_expressions, duration }) => {
   currentQuestion = { question, correct_answer, wrong_answers, equivalent_expressions, _round: roundInLevel };
   questionActive = true;
-   bubbleSpeedMultiplier = 1.0;
-  myBubbleLevel = 0;
+  bubbleSpeedMultiplier = 1.0;
+  // JANGAN reset myBubbleLevel — akumulasi dari soal sebelumnya
   activeBubbleAnswers.clear();
-  const barEl = document.getElementById('my-level-bar');
-  const pctEl = document.getElementById('bubble-pct');
-  if (barEl) { barEl.style.width = '0%'; barEl.className = 'level-bar'; }
-  if (pctEl) pctEl.textContent = '0%';
-  const vign = document.getElementById('danger-vignette');
-  if (vign) vign.style.opacity = '0';
 
   document.getElementById('round-num').textContent = roundInLevel || round;
   document.getElementById('rounds-total').textContent = totalRoundsPerLevel || 5;
@@ -2106,11 +2095,9 @@ socket.on('new_question', ({ round, roundInLevel, level, totalRoundsPerLevel, qu
   }
 
   if (!isHost) {
-    bubbles.forEach(b => b.el.remove());
-    bubbles.clear();
+    // JANGAN hapus bubble lama — spawn bubble baru di atas yang sudah ada
     if (bubbleInterval) { clearInterval(bubbleInterval); bubbleInterval = null; }
-    animFrame = null;
-    animateBubbles();
+    if (!animFrame) animateBubbles();
     startBubbleSpawner(currentQuestion);
   }
 });
