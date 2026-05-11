@@ -1552,14 +1552,19 @@ function handleBubbleClick(id, type, answer, el) {
   }
 
   // Score popup
-  const popup = document.createElement('div');
-  popup.className = 'score-popup';
-  popup.textContent = correct ? '+100' : '-30';
-  popup.style.color = correct ? 'var(--green)' : 'var(--red)';
-  popup.style.left = (b.x + b.sz / 2) + 'px';
-  popup.style.top = b.y + 'px';
-  arena().appendChild(popup);
-  setTimeout(() => popup.remove(), 1000);
+  const pendingPopupX = (b.x + b.sz / 2);
+  const pendingPopupY = b.y;
+  if (correct) window._lastPopupPos = { x: pendingPopupX, y: pendingPopupY };
+  if (!correct) {
+    const popup = document.createElement('div');
+    popup.className = 'score-popup';
+    popup.textContent = '-30';
+    popup.style.color = 'var(--red)';
+    popup.style.left = pendingPopupX + 'px';
+    popup.style.top = pendingPopupY + 'px';
+    arena().appendChild(popup);
+    setTimeout(() => popup.remove(), 1000);
+  }
 
   socket.emit('bubble_click', { code: myRoom, bubbleId: id, answer, isCorrect: correct });
   setTimeout(() => el.remove(), 300);
@@ -2112,6 +2117,19 @@ socket.on('bubble_popped', ({ playerId, bubbleId, correct }) => {
 
 socket.on('wrong_answer_penalty', () => {
   // Server confirms wrong answer — speed already increased client-side, nothing extra needed
+});
+
+socket.on('score_gained', ({ score }) => {
+  const pos = window._lastPopupPos || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  const popup = document.createElement('div');
+  popup.className = 'score-popup';
+  popup.textContent = '+' + score;
+  popup.style.color = 'var(--green)';
+  popup.style.left = pos.x + 'px';
+  popup.style.top = pos.y + 'px';
+  arena().appendChild(popup);
+  setTimeout(() => popup.remove(), 1000);
+  window._lastPopupPos = null;
 });
 
 socket.on('leaderboard_update', ({ leaderboard }) => {
