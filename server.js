@@ -80,6 +80,9 @@ const LEVEL_CONFIG = {
   5: { name: 'Expert',   desc: 'very hard: exponents, square roots, basic algebra, or number sequences', topics: ['exponents', 'square roots', 'algebra', 'sequences'], rounds: 5 },
 };
 
+// ─── Total Rounds (level) yang harus diselesaikan sebelum game berakhir ────────
+const TOTAL_ROUNDS = 3;
+
 const FALLBACK_QUESTIONS = {
   1: [
     { question: "What is 7 + 5?",   correct_answer: "12", wrong_answers: ["10","11","13"], equivalent_expressions: ["5+7","6+6"] },
@@ -267,9 +270,25 @@ function checkLevelComplete(room) {
     .sort((a, b) => b.score - a.score)
     .map((p, i) => ({ rank: i + 1, id: p.id, name: p.name, score: p.score, alive: p.alive }));
 
+  // Kalau sudah selesai semua round → langsung game over
+  if (room.level >= TOTAL_ROUNDS) {
+    room.status = 'ended';
+    const winner = leaderboard[0] || null;
+    const hostPlayer = room.players[room.host];
+    io.to(room.code).emit('game_ended', {
+      winner: winner ? { id: winner.id, name: winner.name, score: winner.score } : null,
+      host: hostPlayer ? { id: hostPlayer.id, name: hostPlayer.name } : null,
+      leaderboard,
+      allRoundsComplete: true,
+    });
+    setTimeout(() => { delete rooms[room.code]; }, 60000);
+    return;
+  }
+
   io.to(room.code).emit('level_complete', {
     level: room.level,
     nextLevel: room.level + 1,
+    totalRounds: TOTAL_ROUNDS,
     leaderboard
   });
 }
@@ -380,20 +399,23 @@ io.on('connection', (socket) => {
     if (!player || !player.alive) return;
 
     if (isCorrect) {
-      // ── Skor berbasis waktu ──────────────────────────────────────────────
-      // Makin cepat jawab dari awal soal muncul → makin besar skor
-      const QUESTION_DURATION_MS = 30000;
+      // ── Skor berbasis urutan jawab ───────────────────────────────────────
+      // Pertama jawab → 100, kedua → 95, ketiga → 90, dst. (minimum 40)
       const MAX_SCORE = 100;
+      const SCORE_DECREMENT = 5;
       const MIN_SCORE = 40;
 
-      let scoreGiven = MAX_SCORE; // default kalau timestamp ga ada
-      if (player.questionStartTime) {
-        const elapsed = Date.now() - player.questionStartTime; // ms
-        const ratio = Math.min(elapsed / QUESTION_DURATION_MS, 1); // 0..1
-        // Skor linear: 100 (jawab instant) → 40 (jawab di detik terakhir)
-        scoreGiven = Math.round(MAX_SCORE - ratio * (MAX_SCORE - MIN_SCORE));
-        scoreGiven = Math.max(MIN_SCORE, Math.min(MAX_SCORE, scoreGiven));
+      // Track berapa player yang sudah jawab benar untuk soal ini
+      const roundKey = `${room.level}_${player.roundInLevel}`;
+      if (!room.sharedQuestions) room.sharedQuestions = {};
+      if (!room.sharedQuestions[roundKey]) room.sharedQuestions[roundKey] = {};
+      if (!room.sharedQuestions[roundKey].answerCount) {
+        room.sharedQuestions[roundKey].answerCount = 0;
       }
+      room.sharedQuestions[roundKey].answerCount += 1;
+      const order = room.sharedQuestions[roundKey].answerCount; // 1=pertama, 2=kedua, dst
+
+      const scoreGiven = Math.max(MIN_SCORE, MAX_SCORE - (order - 1) * SCORE_DECREMENT);
 
       player.score += scoreGiven;
       player.bubbleLevel = Math.max(0, player.bubbleLevel - 15);
@@ -459,6 +481,7 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || room.host !== socket.id) return;
     if (room.status !== 'level_complete') return;
+    if (room.level >= TOTAL_ROUNDS) return; // sudah selesai semua round, jangan lanjut
 
     room.level += 1;
     room.round += 1;
