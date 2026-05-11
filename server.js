@@ -209,16 +209,26 @@ async function sendNextQuestion(room, player) {
     return;
   }
 
-  // Generate soal baru untuk player ini
-  const question = await generateQuestion(level);
+  // Pakai soal yang sama untuk semua player di round yang sama
+  const roundKey = `${level}_${player.roundInLevel}`;
+  if (!room.sharedQuestions) room.sharedQuestions = {};
+  if (!room.sharedQuestions[roundKey]) {
+    room.sharedQuestions[roundKey] = await generateQuestion(level);
+  }
+  const question = room.sharedQuestions[roundKey];
   player.currentQuestion = question;
-  player.questionStartTime = Date.now(); // ⏱ catat waktu soal mulai
+  player.questionStartTime = Date.now();
+
+  // Simpan correct_slot di sharedQuestions biar sama untuk semua player
+  if (!room.sharedQuestions[roundKey].correct_slot) {
+    room.sharedQuestions[roundKey].correct_slot = Math.floor(Math.random() * 3) + 2;
+  }
 
   const playerSocket = io.sockets.sockets.get(player.id);
   if (playerSocket) {
    
     playerSocket.emit('new_question', {
-      correct_slot: Math.floor(Math.random() * 3) + 2,
+      correct_slot: room.sharedQuestions[roundKey].correct_slot,
       round: room.round,
       roundInLevel: player.roundInLevel,
       level,

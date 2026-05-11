@@ -1636,7 +1636,8 @@ function animateBubbles() {
     if (b.settled) return;
 
     // Gravity
-    b.vy = (4.0 + Math.random() * 0.5) * bubbleSpeedMultiplier;
+    b.vy = Math.min((b.vy || 0.5) + 0.02 * bubbleSpeedMultiplier, 4.0 * bubbleSpeedMultiplier);
+    b.vy += (Math.random() - 0.5) * 0.08;
 
     // ── SLIDING: cari posisi X terbaik (settle paling bawah) ──
     // Dilakukan SETIAP frame biar responsif
@@ -1785,8 +1786,9 @@ function startBubbleSpawner(question) {
   correctSpawned = false;
   bubbleInterval = setInterval(() => {
     if (!questionActive) return;
-    spawnOneBubble();
-  }, 3000);
+    const count = Math.random() < 0.5 ? 1 : 2;
+    for (let i = 0; i < count; i++) spawnOneBubble();
+  }, 2500);
 }
 
 function clearBubbles() {
@@ -2051,23 +2053,19 @@ socket.on('game_started', () => {
     arena.appendChild(hostBanner);
     // Host tetap terima leaderboard update tapi ga spawn bubble
   } else {
-    animateBubbles();
-  }
+  // Reset animation lama
+  if (animFrame) cancelAnimationFrame(animFrame);
+
+  // Start animation loop baru
+  animFrame = requestAnimationFrame(animateBubbles);
+}
 });
 
 socket.on('round_starting', ({ round, roundInLevel, level, totalRoundsPerLevel }) => {
- console.log('round_starting received', { round, roundInLevel });
   playRoundFanfare(round);
-  questionActive = false;
-  currentQuestion = null;
-  if (bubbleInterval) { clearInterval(bubbleInterval); bubbleInterval = null; }
-
   document.getElementById('round-num').textContent = roundInLevel || round;
   document.getElementById('rounds-total').textContent = totalRoundsPerLevel || 5;
   document.getElementById('level-num').textContent = level || 1;
-
-  clearBubbles();
-  document.getElementById('timer-bar').style.width = '100%';
 
   if (roundInLevel === 1) {
     const overlay = document.getElementById('round-overlay');
@@ -2099,10 +2097,8 @@ socket.on('new_question', ({ round, roundInLevel, level, totalRoundsPerLevel, qu
   }
 
   if (!isHost) {
-    // FIX: Hanya stop spawner lama & mulai spawner baru.
-    // Bubble yang sudah ada di arena TIDAK dihapus — tetap jatuh & akumulasi.
-    // animateBubbles() juga TIDAK di-restart — sudah jalan dari game_started.
     if (bubbleInterval) { clearInterval(bubbleInterval); bubbleInterval = null; }
+    if (!animFrame) animFrame = requestAnimationFrame(animateBubbles);
     startBubbleSpawner(currentQuestion);
   }
 });
