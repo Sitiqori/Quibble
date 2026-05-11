@@ -10,3 +10,4 @@
 {"username":"ria123","displayName":"ria","passwordHash":"$2b$10$mwUROHvkPUY6DRwX.6PJE.49JAaCdh152CbC6ncKDZuYyyXiCNKHu","createdAt":"2026-05-11T05:31:12.475Z","gamesPlayed":0,"totalScore":0,"_id":"wRhZn06gcuCwBWNv"}
 {"username":"namas","displayName":"neru","passwordHash":"$2b$10$ThT5o5uZvn17VudNKMYdKulXjAZmZ4OCrFOBD0ac/hnR/wa6lNDue","createdAt":"2026-05-10T16:36:20.836Z","gamesPlayed":0,"totalScore":0,"_id":"zTbhGWJpY4p0A1kx"}
 {"$$indexCreated":{"fieldName":"username","unique":true,"sparse":false}}
+{"$$indexCreated":{"fieldName":"username","unique":true}}

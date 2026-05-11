@@ -317,8 +317,8 @@ io.on('connection', (socket) => {
   socket.on('join_room', ({ code, playerName }) => {
     const room = rooms[code];
     if (!room) return socket.emit('error', { message: 'Room not found' });
-    if (room.status !== 'lobby') return socket.emit('error', { message: 'Game already started' });
-    if (Object.keys(room.players).length >= 10) return socket.emit('error', { message: 'Room is full' });
+    if (room.status !== 'lobby') return socket.emit('error', { message: 'Permainan sudah dimulai' });
+    if (Object.keys(room.players).length >= 10) return socket.emit('error', { message: 'Ruangan sudah penuh' });
 
     room.players[socket.id] = {
       id: socket.id, name: playerName, score: 0, alive: true,

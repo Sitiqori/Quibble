@@ -470,7 +470,7 @@ input[type=text]:focus {
   z-index: 5;
 }
 .danger-line::after {
-  content: '☠ DANGER ZONE';
+  content: '☠ ZONA BERBAHAYA';
   position: absolute;
   right: 12px;
   bottom: 6px;
@@ -1043,14 +1043,14 @@ input[type=text]:focus {
   <div id="user-badge" class="user-badge"></div>
   <div class="home-card">
     <div class="input-group">
-      <label class="section-title">Your Name</label>
+      <label class="section-title">Namamu</label>
       <input type="text" id="player-name" placeholder="Enter your name..." maxlength="16">
     </div>
-    <button class="btn btn-primary" onclick="createRoom()">✦ Create Room</button>
+    <button class="btn btn-primary" onclick="createRoom()">✦ Buat Ruang Baru</button>
     <div class="divider">OR</div>
     <div class="join-row">
-      <input type="text" id="room-code-input" placeholder="ENTER CODE" maxlength="5">
-      <button class="btn btn-secondary" onclick="joinRoom()">Join →</button>
+      <input type="text" id="room-code-input" placeholder="MASUKKAN KODE" maxlength="5">
+      <button class="btn btn-secondary" onclick="joinRoom()">Gabung →</button>
     </div>
   </div>
 </div>
@@ -1058,9 +1058,9 @@ input[type=text]:focus {
 <!-- ═══════════════════════════════════════════════════ LOBBY SCREEN -->
 <div class="screen hidden" id="lobby-screen">
   <div class="lobby-header">
-    <div class="room-code-label">Room Code</div>
+    <div class="room-code-label">Kode Ruang</div>
     <div class="room-code-display" id="lobby-code">—</div>
-    <div style="font-size:13px; color:var(--text-muted); margin-top:6px; font-weight:600;">Share this code with friends</div>
+    <div style="font-size:13px; color:var(--text-muted); margin-top:6px; font-weight:600;">Bagikan kode ini dengan teman</div>
   </div>
   <div class="lobby-layout">
     <div class="lobby-card">
@@ -1068,7 +1068,7 @@ input[type=text]:focus {
       <div class="players-list" id="players-list"></div>
     </div>
     <div class="lobby-card" style="display:flex; flex-direction:column;">
-      <div class="section-title">Game Settings</div>
+      <div class="section-title">Setting Permainan</div>
       <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:16px; margin-top:16px;">
         <div style="background:var(--surface2); border-radius:12px; padding:16px; font-size:13px; line-height:1.8; color:var(--text-muted);">
           🫧 Pecahkan bubbles berisi jawaban yang benar<br>
@@ -1100,8 +1100,8 @@ input[type=text]:focus {
 <div class="screen hidden" id="game-screen">
   <!-- Question bar -->
   <div class="question-bar">
-    <div class="round-badge">Lv <span id="level-num">1</span> &nbsp;·&nbsp; Round <span id="round-num">1</span>/<span id="rounds-total">5</span></div>
-    <div class="question-text" id="question-display">Get ready...</div>
+    <div class="round-badge">Lv <span id="level-num">1</span> &nbsp;·&nbsp; Ronde <span id="round-num">1</span>/<span id="rounds-total">5</span></div>
+    <div class="question-text" id="question-display">Bersiaplah...</div>
     <div class="timer-bar-wrap">
       <div class="timer-bar" id="timer-bar" style="width:100%"></div>
     </div>
@@ -1109,9 +1109,9 @@ input[type=text]:focus {
 
   <!-- Round overlay -->
   <div class="round-overlay" id="round-overlay">
-    <div class="round-label">Round</div>
+    <div class="round-label">Ronde</div>
     <div class="round-number" id="round-overlay-num">1</div>
-    <div style="color:var(--text-muted);font-weight:700;font-size:16px;">Get ready!</div>
+    <div style="color:var(--text-muted);font-weight:700;font-size:16px;">Bersiaplah!</div>
   </div>
 
   <!-- Level Complete overlay -->
@@ -1125,8 +1125,8 @@ input[type=text]:focus {
 
   <!-- Eliminated overlay -->
   <div class="eliminated-overlay hidden" id="eliminated-overlay">
-    <div class="elim-title">☠️ ELIMINATED!</div>
-    <div class="elim-sub">Watch the battle continue...</div>
+    <div class="elim-title">☠️ TERELIMINASI!</div>
+    <div class="elim-sub">Saksikan kelanjutan pertarungan...</div>
   </div>
 
   <div class="game-layout">
@@ -1146,14 +1146,14 @@ input[type=text]:focus {
     <!-- Sidebar -->
     <div class="game-sidebar">
       <div class="sidebar-section">
-        <div class="sidebar-label">My Stats</div>
+        <div class="sidebar-label">Statusku</div>
         <div class="my-stats">
           <div class="stat-row">
-            <span class="stat-label">Score</span>
+            <span class="stat-label">Skor</span>
             <span class="stat-value" id="my-score">0</span>
           </div>
           <div class="stat-row" style="margin-top:4px;">
-            <span class="stat-label" style="font-size:11px;">Bubble Level</span>
+            <span class="stat-label" style="font-size:11px;">Level Bubble</span>
             <span style="font-size:11px; font-weight:700; color:var(--red)" id="bubble-pct">0%</span>
           </div>
           <div class="level-bar-wrap">
@@ -1171,14 +1171,14 @@ input[type=text]:focus {
 <div class="screen hidden" id="end-screen">
   <div class="winner-display">
     <div class="winner-trophy">🏆</div>
-    <div class="winner-label">Winner</div>
+    <div class="winner-label">Pemenang</div>
     <div class="winner-name" id="winner-name">—</div>
   </div>
   <div class="final-leaderboard">
-    <div class="section-title" style="margin-bottom:16px;">Final Standings</div>
+    <div class="section-title" style="margin-bottom:16px;">LEADERBOARD</div>
     <div id="final-leaderboard-list"></div>
   </div>
-  <button class="btn btn-primary" onclick="goHome()" style="width:100%; max-width:480px;">Play Again 🔄</button>
+  <button class="btn btn-primary" onclick="goHome()" style="width:100%; max-width:480px;">Main Lagi🔄</button>
 </div>
 
 <script>
@@ -1451,11 +1451,11 @@ function renderLobby(state) {
   if (isHost) { 
     const btn = document.createElement('button');
     btn.className = 'btn btn-success';
-    btn.textContent = '▶ Start Game!';
+    btn.textContent = '▶ Mulai Game!';
     btn.onclick = () => socket.emit('start_game', { code: myRoom });
     actions.appendChild(btn);
   } else {
-    actions.innerHTML = '<div class="waiting-text"><div class="pulse-dot"></div> Waiting for host to start...</div>';
+    actions.innerHTML = '<div class="waiting-text"><div class="pulse-dot"></div> Menunggu host untuk memulai...</div>';
   }
 }
 
@@ -1900,7 +1900,7 @@ function renderLeaderboard(data) {
         clearBubbles();
         document.getElementById('eliminated-overlay').classList.remove('hidden');
         playEliminated();
-        showToast('☠️ Kamu ke-eliminate!', 'error');
+        showToast('☠️ Kamu Tereliminasi!', 'error');
       }
     }
   });
@@ -2011,14 +2011,14 @@ socket.on('room_created', ({ code, player }) => {
   myRoom = code;
   isHost = true;
   showScreen('lobby-screen');
-  showToast(`Room created! Code: ${code}`, 'success');
+  showToast(`Berhasil dibuat! Code: ${code}`, 'Sukses');
 });
 
 socket.on('room_joined', ({ code }) => {
   myRoom = code;
   isHost = false;
   showScreen('lobby-screen');
-  showToast('Joined room!', 'success');
+  showToast('Berhasil Bergabung!', 'success');
 });
 
 socket.on('room_state', (state) => {
@@ -2027,7 +2027,7 @@ socket.on('room_state', (state) => {
 
 socket.on('you_are_host', () => {
   isHost = true;
-  showToast('You are now the host!', 'info');
+  showToast('Kamu sekarang Host-nya!', 'info');
 });
 
 socket.on('error', ({ message }) => {
@@ -2052,8 +2052,8 @@ socket.on('game_started', () => {
     `;
     hostBanner.innerHTML = `
       <div style="font-size:40px; margin-bottom:8px;">👑</div>
-      <div style="font-family:'Fredoka One',cursive; font-size:22px; color:#a855f7; margin-bottom:4px;">You are the HOST</div>
-      <div style="font-size:13px; color:#b8a8e8;">Spectating the game...</div>
+      <div style="font-family:'Fredoka One',cursive; font-size:22px; color:#a855f7; margin-bottom:4px;">Kamu adalah HOST</div>
+      <div style="font-size:13px; color:#b8a8e8;">Menyaksikan permainan...</div>
     `;
     arena.appendChild(hostBanner);
     // Host tetap terima leaderboard update tapi ga spawn bubble
@@ -2151,7 +2151,7 @@ socket.on('player_eliminated', ({ playerId, name, finalScore }) => {
 });
 
 socket.on('player_disconnected', ({ name }) => {
-  showToast(`${name} disconnected`, 'info');
+  showToast(`${name} Keluar`, 'info');
 });
 
 socket.on('round_ended', ({ round }) => {
