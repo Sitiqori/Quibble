@@ -1509,7 +1509,8 @@ function spawnBubble({ type, answer, id }) {
 
   // Posisi X dalam kolom terpilih, dengan sedikit variasi
   const colStart = padding + chosenCol * colW;
-  let x = colStart + (colW - size) * 0.1 + Math.random() * (colW - size) * 0.8;
+  const seedVal = (currentQuestion?._seed || 0) + bubbleIdCounter;
+  let x = colStart + (colW - size) * 0.1 + seededRandom(seedVal) * (colW - size) * 0.8;
   x = Math.max(padding, Math.min(aW - size - padding, x));
 
   // Anti-overlap: nudge jika terlalu dekat bubble lain di spawn area
@@ -1523,7 +1524,7 @@ function spawnBubble({ type, answer, id }) {
   el.style.left = x + 'px';
   el.style.top  = startY + 'px';
 
- const vy = (0.3 + Math.random() * 0.4) * bubbleSpeedMultiplier;
+ const vy = (4.0 + Math.random() * 0.5) * bubbleSpeedMultiplier;
 
   el.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1635,8 +1636,7 @@ function animateBubbles() {
     if (b.settled) return;
 
     // Gravity
-    b.vy = Math.min((b.vy || 0.5) + 0.02 * bubbleSpeedMultiplier, 4.0 * bubbleSpeedMultiplier);
-    b.vy += (Math.random() - 0.5) * 0.08; 
+    b.vy = (4.0 + Math.random() * 0.5) * bubbleSpeedMultiplier;
 
     // ── SLIDING: cari posisi X terbaik (settle paling bawah) ──
     // Dilakukan SETIAP frame biar responsif
@@ -1731,9 +1731,14 @@ function buildBubblePool(question, exclude = []) {
   return pool;
 }
 
+function seededRandom(seed) {
+  const x = Math.sin(seed + 1) * 10000;
+  return x - Math.floor(x);
+}
+
 function startBubbleSpawner(question) {
   if (bubbleInterval) clearInterval(bubbleInterval);
-  bubbleSpeedMultiplier = 1.0;
+  bubbleSpeedMultiplier = 1.0 + ((question._round || 1) - 1) * 0.2;
 
  const correct = Number(question.correct_answer);
   const usedAnswers = new Set([correct]);
@@ -1751,9 +1756,9 @@ function startBubbleSpawner(question) {
     return String(candidate);
   };
 
-  let wrongSpawnedCount = 0;
-  const correctAfter = Math.floor(Math.random() * 6) + 5; // muncul setelah 5-10 wrong/empty
-  let correctSpawned = false;
+    let wrongSpawnedCount = 0;
+    const correctAfter = question._correctSlot || 2; // posisi dari server, sama untuk semua player
+    let correctSpawned = false;
 
   const spawnOneBubble = () => {
     if (!questionActive) return;
@@ -1776,11 +1781,12 @@ function startBubbleSpawner(question) {
     }
   };
 
+  wrongSpawnedCount = 0;
+  correctSpawned = false;
   bubbleInterval = setInterval(() => {
     if (!questionActive) return;
-    const count = Math.random() < 0.4 ? 1 : Math.random() < 0.7 ? 2 : 3;
-    for (let i = 0; i < count; i++) spawnOneBubble();
-  }, 900);
+    spawnOneBubble();
+  }, 3000);
 }
 
 function clearBubbles() {
@@ -1904,6 +1910,7 @@ function stopGame() {
   myRoom = '';
   myScore = 0;
   myBubbleLevel = 0;
+  document.getElementById('eliminated-overlay').classList.add('hidden');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2049,6 +2056,7 @@ socket.on('game_started', () => {
 });
 
 socket.on('round_starting', ({ round, roundInLevel, level, totalRoundsPerLevel }) => {
+ console.log('round_starting received', { round, roundInLevel });
   playRoundFanfare(round);
   questionActive = false;
   currentQuestion = null;
@@ -2058,23 +2066,21 @@ socket.on('round_starting', ({ round, roundInLevel, level, totalRoundsPerLevel }
   document.getElementById('rounds-total').textContent = totalRoundsPerLevel || 5;
   document.getElementById('level-num').textContent = level || 1;
 
-  // Overlay "Round X" hanya di soal pertama tiap level, soal 2+ langsung ganti soal
+  clearBubbles();
+  document.getElementById('timer-bar').style.width = '100%';
+
   if (roundInLevel === 1) {
-    clearBubbles();
-    document.getElementById('timer-bar').style.width = '100%';
     const overlay = document.getElementById('round-overlay');
     document.getElementById('round-overlay-num').textContent = 1;
     overlay.classList.add('visible');
     setTimeout(() => overlay.classList.remove('visible'), 2000);
   }
-  // Soal selanjutnya: tidak ada overlay, tidak ada jeda, langsung soal baru via new_question
 });
 
-socket.on('new_question', ({ round, roundInLevel, level, totalRoundsPerLevel, question, correct_answer, wrong_answers, equivalent_expressions, duration }) => {
-  currentQuestion = { question, correct_answer, wrong_answers, equivalent_expressions, _round: roundInLevel };
+socket.on('new_question', ({ round, roundInLevel, level, totalRoundsPerLevel, question, correct_answer, wrong_answers, equivalent_expressions, duration, correct_slot, spawn_seed }) => {
+  console.log('new_question received', { round, roundInLevel, question });
+  currentQuestion = { question, correct_answer, wrong_answers, equivalent_expressions, _round: roundInLevel, _correctSlot: correct_slot || 2, _seed: spawn_seed || 0 };
   questionActive = true;
-  bubbleSpeedMultiplier = 1.0;
-  // JANGAN reset myBubbleLevel — akumulasi dari soal sebelumnya
   activeBubbleAnswers.clear();
 
   document.getElementById('round-num').textContent = roundInLevel || round;
@@ -2082,22 +2088,21 @@ socket.on('new_question', ({ round, roundInLevel, level, totalRoundsPerLevel, qu
   document.getElementById('level-num').textContent = level || 1;
   document.getElementById('question-display').textContent = question;
 
-  // Timer bar hanya aktif di soal pertama tiap level
-  const isFirstQuestion = (roundInLevel === 1);
+  // Timer bar hanya di soal pertama
   const timerBarWrap = document.querySelector('.timer-bar-wrap');
-  if (isFirstQuestion) {
+  if (roundInLevel === 1) {
     if (timerBarWrap) timerBarWrap.style.opacity = '1';
     startTimer(duration);
   } else {
-    // Soal 2–5: sembunyikan timer bar, hentikan timer
     if (timerInterval) clearInterval(timerInterval);
     if (timerBarWrap) timerBarWrap.style.opacity = '0';
   }
 
   if (!isHost) {
-    // JANGAN hapus bubble lama — spawn bubble baru di atas yang sudah ada
+    // FIX: Hanya stop spawner lama & mulai spawner baru.
+    // Bubble yang sudah ada di arena TIDAK dihapus — tetap jatuh & akumulasi.
+    // animateBubbles() juga TIDAK di-restart — sudah jalan dari game_started.
     if (bubbleInterval) { clearInterval(bubbleInterval); bubbleInterval = null; }
-    if (!animFrame) animateBubbles();
     startBubbleSpawner(currentQuestion);
   }
 });

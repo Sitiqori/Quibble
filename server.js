@@ -20,78 +20,45 @@ usersDb.ensureIndex({ fieldName: 'username', unique: true });
 
 // ─── Auth Routes ──────────────────────────────────────────────────────────────
 
-// POST /api/register
 app.post('/api/register', async (req, res) => {
   const { username, password, displayName } = req.body;
-
-  if (!username || !password || !displayName) {
+  if (!username || !password || !displayName)
     return res.status(400).json({ error: 'Username, password, dan nama lengkap wajib diisi.' });
-  }
-  if (username.length < 3 || username.length > 20) {
+  if (username.length < 3 || username.length > 20)
     return res.status(400).json({ error: 'Username harus 3–20 karakter.' });
-  }
-  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+  if (!/^[a-zA-Z0-9_]+$/.test(username))
     return res.status(400).json({ error: 'Username hanya boleh huruf, angka, dan underscore.' });
-  }
-  if (password.length < 6) {
+  if (password.length < 6)
     return res.status(400).json({ error: 'Password minimal 6 karakter.' });
-  }
-  if (displayName.length < 2 || displayName.length > 20) {
+  if (displayName.length < 2 || displayName.length > 20)
     return res.status(400).json({ error: 'Nama tampil harus 2–20 karakter.' });
-  }
 
   try {
     const existing = await usersDb.findOne({ username: username.toLowerCase() });
-    if (existing) {
-      return res.status(409).json({ error: 'Username sudah digunakan.' });
-    }
-
+    if (existing) return res.status(409).json({ error: 'Username sudah digunakan.' });
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await usersDb.insert({
-      username: username.toLowerCase(),
-      displayName,
-      passwordHash,
-      createdAt: new Date().toISOString(),
-      gamesPlayed: 0,
-      totalScore: 0,
+      username: username.toLowerCase(), displayName, passwordHash,
+      createdAt: new Date().toISOString(), gamesPlayed: 0, totalScore: 0,
     });
-
-    res.status(201).json({
-      message: 'Registrasi berhasil!',
-      user: { username: user.username, displayName: user.displayName }
-    });
+    res.status(201).json({ message: 'Registrasi berhasil!', user: { username: user.username, displayName: user.displayName } });
   } catch (err) {
-    if (err.errorType === 'uniqueViolated') {
-      return res.status(409).json({ error: 'Username sudah digunakan.' });
-    }
+    if (err.errorType === 'uniqueViolated') return res.status(409).json({ error: 'Username sudah digunakan.' });
     console.error('Register error:', err);
     res.status(500).json({ error: 'Terjadi kesalahan server.' });
   }
 });
 
-// POST /api/login
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
-
-  if (!username || !password) {
+  if (!username || !password)
     return res.status(400).json({ error: 'Username dan password wajib diisi.' });
-  }
-
   try {
     const user = await usersDb.findOne({ username: username.toLowerCase() });
-    if (!user) {
-      return res.status(401).json({ error: 'Username atau password salah.' });
-    }
-
+    if (!user) return res.status(401).json({ error: 'Username atau password salah.' });
     const match = await bcrypt.compare(password, user.passwordHash);
-    if (!match) {
-      return res.status(401).json({ error: 'Username atau password salah.' });
-    }
-
-    res.json({
-      message: 'Login berhasil!',
-      user: { username: user.username, displayName: user.displayName }
-    });
+    if (!match) return res.status(401).json({ error: 'Username atau password salah.' });
+    res.json({ message: 'Login berhasil!', user: { username: user.username, displayName: user.displayName } });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Terjadi kesalahan server.' });
@@ -104,43 +71,15 @@ function generateCode() {
   return Math.random().toString(36).substring(2, 7).toUpperCase();
 }
 
-// ─── AI Question Generator (Gemini) ───────────────────────────────────────────
-
-// Level descriptions for Gemini prompt
+// ─── Level Config ─────────────────────────────────────────────────────────────
 const LEVEL_CONFIG = {
-  1: {
-    name: 'Pemula',
-    desc: 'very easy: addition and subtraction only, numbers 1–20, e.g. "What is 7 + 5?" or "What is 13 − 6?"',
-    topics: ['addition 1-20', 'subtraction 1-20'],
-    rounds: 5,
-  },
-  2: {
-    name: 'Mudah',
-    desc: 'easy: addition and subtraction with numbers 10–99, e.g. "What is 34 + 47?" or "What is 85 − 29?"',
-    topics: ['addition 10-99', 'subtraction 10-99'],
-    rounds: 5,
-  },
-  3: {
-    name: 'Menengah',
-    desc: 'medium: multiplication tables (2–12) and simple division, e.g. "What is 8 × 7?" or "What is 63 ÷ 9?"',
-    topics: ['multiplication tables', 'simple division'],
-    rounds: 5,
-  },
-  4: {
-    name: 'Sulit',
-    desc: 'hard: percentages, fractions, or mixed operations, e.g. "What is 20% of 350?", "What is ¾ of 48?", or "What is (12 + 8) × 3?"',
-    topics: ['percentages', 'fractions', 'mixed operations'],
-    rounds: 5,
-  },
-  5: {
-    name: 'Expert',
-    desc: 'very hard: exponents, square roots, basic algebra, or number sequences, e.g. "What is 3⁴?", "What is √144?", "If 4x = 36, what is x?", "What is the next number: 2, 4, 8, 16, __?"',
-    topics: ['exponents', 'square roots', 'algebra', 'sequences'],
-    rounds: 5,
-  },
+  1: { name: 'Pemula',   desc: 'very easy: addition and subtraction only, numbers 1–20', topics: ['addition 1-20', 'subtraction 1-20'], rounds: 5 },
+  2: { name: 'Mudah',    desc: 'easy: addition and subtraction with numbers 10–99',       topics: ['addition 10-99', 'subtraction 10-99'], rounds: 5 },
+  3: { name: 'Menengah', desc: 'medium: multiplication tables (2–12) and simple division', topics: ['multiplication tables', 'simple division'], rounds: 5 },
+  4: { name: 'Sulit',    desc: 'hard: percentages, fractions, or mixed operations',        topics: ['percentages', 'fractions', 'mixed operations'], rounds: 5 },
+  5: { name: 'Expert',   desc: 'very hard: exponents, square roots, basic algebra, or number sequences', topics: ['exponents', 'square roots', 'algebra', 'sequences'], rounds: 5 },
 };
 
-// Fallback question banks per level
 const FALLBACK_QUESTIONS = {
   1: [
     { question: "What is 7 + 5?",   correct_answer: "12", wrong_answers: ["10","11","13"], equivalent_expressions: ["5+7","6+6"] },
@@ -233,7 +172,6 @@ Rules:
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const cleaned = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleaned);
-    // Validate
     if (!parsed.question || !parsed.correct_answer || !Array.isArray(parsed.wrong_answers)) throw new Error('Invalid shape');
     return parsed;
   } catch (err) {
@@ -241,6 +179,89 @@ Rules:
     const pool = FALLBACK_QUESTIONS[level] || FALLBACK_QUESTIONS[3];
     return pool[Math.floor(Math.random() * pool.length)];
   }
+}
+
+// ─── Helper: kirim soal baru ke satu player ───────────────────────────────────
+async function sendNextQuestion(room, player) {
+  if (!room || room.status !== 'playing') return;
+  if (!player || !player.alive || player.disconnected) return;
+
+  const level = room.level || 1;
+  const cfg = LEVEL_CONFIG[level] || LEVEL_CONFIG[3];
+  const roundsPerLevel = cfg.rounds;
+
+  // Naikkan roundInLevel player ini
+  player.roundInLevel = (player.roundInLevel || 0) + 1;
+
+  // Kalau sudah selesai semua round di level ini
+  if (player.roundInLevel > roundsPerLevel) {
+    player.finishedLevel = true;
+    // Kirim sinyal "kamu selesai level ini, tunggu yang lain"
+    const playerSocket = io.sockets.sockets.get(player.id);
+    if (playerSocket) {
+      playerSocket.emit('waiting_others', {
+        level,
+        message: 'Kamu sudah selesai level ini! Menunggu pemain lain...'
+      });
+    }
+    // Cek apakah semua non-host player sudah selesai level ini
+    checkLevelComplete(room);
+    return;
+  }
+
+  // Generate soal baru untuk player ini
+  const question = await generateQuestion(level);
+  player.currentQuestion = question;
+  player.questionStartTime = Date.now(); // ⏱ catat waktu soal mulai
+
+  const playerSocket = io.sockets.sockets.get(player.id);
+  if (playerSocket) {
+   
+    playerSocket.emit('new_question', {
+      correct_slot: Math.floor(Math.random() * 3) + 2,
+      round: room.round,
+      roundInLevel: player.roundInLevel,
+      level,
+      totalRoundsPerLevel: roundsPerLevel,
+      question: question.question,
+      correct_answer: question.correct_answer,
+      wrong_answers: question.wrong_answers,
+      equivalent_expressions: question.equivalent_expressions,
+      duration: 30000
+    });
+  }
+}
+
+// ─── Cek apakah semua player sudah selesai level ──────────────────────────────
+function checkLevelComplete(room) {
+  if (!room || room.status !== 'playing') return;
+
+  const activePlayers = Object.values(room.players).filter(
+    p => p.id !== room.host && p.alive && !p.disconnected
+  );
+
+  // Kalau tidak ada player aktif sama sekali → game over
+  if (activePlayers.length === 0) {
+    checkGameEnd(room.code);
+    return;
+  }
+
+  const allDone = activePlayers.every(p => p.finishedLevel === true);
+  if (!allDone) return;
+
+  // Semua selesai → level complete!
+  room.status = 'level_complete';
+  if (room.questionTimer) { clearTimeout(room.questionTimer); room.questionTimer = null; }
+
+  const leaderboard = activePlayers
+    .sort((a, b) => b.score - a.score)
+    .map((p, i) => ({ rank: i + 1, id: p.id, name: p.name, score: p.score, alive: p.alive }));
+
+  io.to(room.code).emit('level_complete', {
+    level: room.level,
+    nextLevel: room.level + 1,
+    leaderboard
+  });
 }
 
 // ─── Socket.IO Events ─────────────────────────────────────────────────────────
@@ -266,18 +287,16 @@ io.on('connection', (socket) => {
       code,
       host: socket.id,
       players: {},
-      status: 'lobby', // lobby | playing | ended
+      status: 'lobby',
       round: 0,
+      level: 1,
       currentQuestion: null,
       questionTimer: null,
     };
     rooms[code].players[socket.id] = {
-      id: socket.id,
-      name: playerName,
-      score: 0,
-      alive: true,
-      bubbleLevel: 0, // 0-100, elimination at 100
-      online: true,
+      id: socket.id, name: playerName, score: 0, alive: true,
+      bubbleLevel: 0, online: true, roundInLevel: 0, finishedLevel: false,
+      questionStartTime: null,
     };
     socket.join(code);
     socket.emit('room_created', { code, player: rooms[code].players[socket.id] });
@@ -292,12 +311,9 @@ io.on('connection', (socket) => {
     if (Object.keys(room.players).length >= 10) return socket.emit('error', { message: 'Room is full' });
 
     room.players[socket.id] = {
-      id: socket.id,
-      name: playerName,
-      score: 0,
-      alive: true,
-      bubbleLevel: 0,
-      online: true,
+      id: socket.id, name: playerName, score: 0, alive: true,
+      bubbleLevel: 0, online: true, roundInLevel: 0, finishedLevel: false,
+      questionStartTime: null,
     };
     socket.join(code);
     socket.emit('room_joined', { code, player: room.players[socket.id] });
@@ -311,71 +327,91 @@ io.on('connection', (socket) => {
     if (Object.keys(room.players).length < 1) return;
 
     room.status = 'playing';
-    room.round = 0;
+    room.round = 1;
     room.level = 1;
-    room.roundInLevel = 0;
-    // Reset players
+
+    // Reset semua player
     Object.values(room.players).forEach(p => {
       p.score = 0;
       p.alive = true;
       p.bubbleLevel = 0;
+      p.roundInLevel = 0;
+      p.finishedLevel = false;
+      p.questionStartTime = null;
     });
-    
+
     io.to(code).emit('game_started');
-    await startRound(code);
+
+    const nonHostPlayers = Object.values(room.players).filter(p => p.id !== room.host && !p.disconnected);
+    for (const p of nonHostPlayers) {
+      setTimeout(async () => {
+        const pSocket = io.sockets.sockets.get(p.id);
+        if (pSocket) {
+          pSocket.emit('round_starting', {
+            round: room.round,
+            roundInLevel: 1,
+            level: room.level,
+            totalRoundsPerLevel: (LEVEL_CONFIG[room.level] || LEVEL_CONFIG[1]).rounds,
+          });
+        }
+        await sendNextQuestion(room, p);
+      }, 800);
+    }
+
+    // Timer 30 detik per soal — kalau habis, player yang belum jawab langsung dapat soal baru
+    startRoundTimer(code);
   });
 
-  // Bubble clicked (answer attempt)
-  socket.on('bubble_click', ({ code, bubbleId, answer, isCorrect }) => {
+  // ─── BUBBLE CLICK: inti logika per-player ────────────────────────────────
+  socket.on('bubble_click', async ({ code, bubbleId, answer, isCorrect }) => {
     const room = rooms[code];
     if (!room || room.status !== 'playing') return;
     const player = room.players[socket.id];
     if (!player || !player.alive) return;
 
     if (isCorrect) {
-      player.score += 100;
+      // ── Skor berbasis waktu ──────────────────────────────────────────────
+      // Makin cepat jawab dari awal soal muncul → makin besar skor
+      const QUESTION_DURATION_MS = 30000;
+      const MAX_SCORE = 100;
+      const MIN_SCORE = 40;
+
+      let scoreGiven = MAX_SCORE; // default kalau timestamp ga ada
+      if (player.questionStartTime) {
+        const elapsed = Date.now() - player.questionStartTime; // ms
+        const ratio = Math.min(elapsed / QUESTION_DURATION_MS, 1); // 0..1
+        // Skor linear: 100 (jawab instant) → 40 (jawab di detik terakhir)
+        scoreGiven = Math.round(MAX_SCORE - ratio * (MAX_SCORE - MIN_SCORE));
+        scoreGiven = Math.max(MIN_SCORE, Math.min(MAX_SCORE, scoreGiven));
+      }
+
+      player.score += scoreGiven;
       player.bubbleLevel = Math.max(0, player.bubbleLevel - 15);
+
       io.to(code).emit('bubble_popped', { playerId: socket.id, bubbleId, correct: true });
+
+      // Kirim score info ke player yang bersangkutan (biar tau dapat berapa)
+      socket.emit('score_gained', { score: scoreGiven, total: player.score });
+
       emitLeaderboard(code);
 
-      // Advance to next round immediately on correct answer
-      if (room.questionTimer) {
-        clearTimeout(room.questionTimer);
-        room.questionTimer = null;
-      }
-      io.to(code).emit('round_ended', { round: room.round });
+      // ── Langsung kirimkan soal berikutnya HANYA ke player ini ────────────
+      await sendNextQuestion(room, player);
 
-      // Langsung lanjut ke soal berikutnya tanpa jeda
-      ;(async () => {
-        if (!rooms[code] || rooms[code].status !== 'playing') return;
-        const currentLevel = room.level || 1;
-        const roundsThisLevel = (LEVEL_CONFIG[currentLevel] || LEVEL_CONFIG[3]).rounds;
-        if (rooms[code] && rooms[code].roundInLevel >= roundsThisLevel) {
-          rooms[code].status = 'level_complete';
-          io.to(code).emit('level_complete', {
-            level: rooms[code].level,
-            nextLevel: rooms[code].level + 1,
-            leaderboard: Object.values(rooms[code].players)
-              .filter(p => p.id !== rooms[code].host)
-              .sort((a, b) => b.score - a.score)
-              .map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive }))
-          });
-        } else {
-          await startRound(code);
-        }
-      })();
     } else {
+      // Jawaban salah
       player.score = Math.max(0, player.score - 30);
       player.bubbleLevel = Math.min(100, player.bubbleLevel + 10);
+
       io.to(code).emit('bubble_popped', { playerId: socket.id, bubbleId, correct: false });
-      // Signal client to speed up bubbles on wrong answer
       socket.emit('wrong_answer_penalty');
+
       emitLeaderboard(code);
       checkElimination(code, socket.id);
     }
   });
 
-  // Bubble reaches top (level increase)
+  // Bubble reaches top (danger level increase)
   socket.on('bubble_overflow', ({ code, amount }) => {
     const room = rooms[code];
     if (!room || room.status !== 'playing') return;
@@ -387,12 +423,12 @@ io.on('connection', (socket) => {
     emitLeaderboard(code);
   });
 
-  // Stop game early (host only) — broadcast game_ended to all players
+  // Stop game early (host only)
   socket.on('stop_game', ({ code }) => {
     const room = rooms[code];
     if (!room || room.host !== socket.id) return;
     room.status = 'ended';
-    clearTimeout(room.questionTimer);
+    if (room.questionTimer) clearTimeout(room.questionTimer);
     const allPlayers = Object.values(room.players).sort((a, b) => b.score - a.score);
     const nonHostPlayers = allPlayers.filter(p => p.id !== room.host);
     const hostPlayer = room.players[room.host];
@@ -400,117 +436,132 @@ io.on('connection', (socket) => {
     io.to(code).emit('game_ended', {
       winner: winner ? { id: winner.id, name: winner.name, score: winner.score } : null,
       host: hostPlayer ? { id: hostPlayer.id, name: hostPlayer.name } : null,
-      leaderboard: nonHostPlayers.map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive, online: p.online !== false }))
+      leaderboard: nonHostPlayers.map((p, i) => ({
+        rank: i + 1, id: p.id, name: p.name, score: p.score,
+        alive: p.alive, online: p.online !== false
+      }))
     });
     setTimeout(() => { delete rooms[code]; }, 60000);
   });
 
   // Continue to next level (host only)
-  socket.on('continue_level', ({ code }) => {
+  socket.on('continue_level', async ({ code }) => {
     const room = rooms[code];
     if (!room || room.host !== socket.id) return;
     if (room.status !== 'level_complete') return;
+
     room.level += 1;
-    room.roundInLevel = 0;
+    room.round += 1;
     room.status = 'playing';
-    // Bubble level TIDAK direset — akumulasi terus ke level berikutnya
+
+    // Reset per-player state untuk level baru (bubble level TIDAK direset — akumulasi)
+    Object.values(room.players).forEach(p => {
+      p.roundInLevel = 0;
+      p.finishedLevel = false;
+      p.questionStartTime = null;
+    });
+
     io.to(code).emit('level_started', { level: room.level });
-    startRound(code);
+
+    const activePlayers = Object.values(room.players).filter(
+      p => p.id !== room.host && p.alive && !p.disconnected
+    );
+    for (const p of activePlayers) {
+      setTimeout(async () => {
+        const pSocket = io.sockets.sockets.get(p.id);
+        if (pSocket) {
+          pSocket.emit('round_starting', {
+            round: room.round,
+            roundInLevel: 1,
+            level: room.level,
+            totalRoundsPerLevel: (LEVEL_CONFIG[room.level] || LEVEL_CONFIG[1]).rounds,
+          });
+        }
+        await sendNextQuestion(room, p);
+      }, 500);
+    }
+
+    startRoundTimer(code);
   });
 
   // Disconnect
   socket.on('disconnect', () => {
     for (const code in rooms) {
       const room = rooms[code];
-      if (room.players[socket.id]) {
-        const player = room.players[socket.id];
-        player.online = false;
-        player.disconnected = true;
-        // TIDAK ubah alive — game tetap jalan, player offline masih "hidup" di leaderboard
-        io.to(code).emit('player_disconnected', { playerId: socket.id, name: player.name });
-        emitRoomState(code);
-        emitLeaderboard(code);
+      if (!room.players[socket.id]) continue;
 
-        if (room.status === 'playing') {
-          // Game berhenti HANYA kalau semua pemain non-host sudah offline
-          const onlinePlayers = Object.values(room.players).filter(
-            p => p.id !== room.host && !p.disconnected
-          );
-          if (onlinePlayers.length === 0) {
-            checkGameEnd(code);
-          }
-          // Kalau masih ada yang online → game lanjut terus, tidak perlu apa-apa
+      const player = room.players[socket.id];
+      player.online = false;
+      player.disconnected = true;
+      io.to(code).emit('player_disconnected', { playerId: socket.id, name: player.name });
+      emitRoomState(code);
+      emitLeaderboard(code);
+
+      if (room.status === 'playing') {
+        const onlinePlayers = Object.values(room.players).filter(
+          p => p.id !== room.host && !p.disconnected
+        );
+        if (onlinePlayers.length === 0) {
+          checkGameEnd(code);
+        } else {
+          // Kalau player yang DC sudah selesai level atau belum, cek apakah level complete
+          checkLevelComplete(room);
         }
+      }
 
-        // Kalau host disconnect → pindah host ke player online lain
-        if (room.host === socket.id) {
-          const others = Object.keys(room.players).filter(id => id !== socket.id && !room.players[id].disconnected);
-          if (others.length > 0) {
-            room.host = others[0];
-            io.to(others[0]).emit('you_are_host');
-          }
+      if (room.host === socket.id) {
+        const others = Object.keys(room.players).filter(id => id !== socket.id && !room.players[id].disconnected);
+        if (others.length > 0) {
+          room.host = others[0];
+          io.to(others[0]).emit('you_are_host');
         }
       }
     }
   });
 });
 
-// ─── Game Logic ───────────────────────────────────────────────────────────────
-async function startRound(code) {
+// ─── Round Timer (30 detik per soal) ─────────────────────────────────────────
+// Timer ini berfungsi sebagai "nudge" — kalau habis, player yang belum jawab
+// dapat soal baru otomatis (dianggap skip/timeout)
+function startRoundTimer(code) {
   const room = rooms[code];
-  if (!room || room.status !== 'playing') return;
-  
-  // Hitung pemain (non-host) yang masih alive — termasuk yang offline
-  // Game stop hanya kalau tinggal 0 atau 1 pemain alive total
-  const alivePlayers = Object.values(room.players).filter(p => p.alive && p.id !== room.host);
-  if (alivePlayers.length <= 1) return checkGameEnd(code);
+  if (!room) return;
+  if (room.questionTimer) clearTimeout(room.questionTimer);
 
-  const currentLevel = room.level || 1;
-  const roundsThisLevel = (LEVEL_CONFIG[currentLevel] || LEVEL_CONFIG[3]).rounds;
-
-  room.round += 1;
-  room.roundInLevel += 1;
-  io.to(code).emit('round_starting', { round: room.round, roundInLevel: room.roundInLevel, level: currentLevel, totalRoundsPerLevel: roundsThisLevel });
-
-  const question = await generateQuestion(currentLevel);
-  room.currentQuestion = question;
-
-  // Langsung kirim soal tanpa jeda
-  if (rooms[code]?.status !== 'playing') return;
-  io.to(code).emit('new_question', {
-    round: room.round,
-    roundInLevel: room.roundInLevel,
-    level: currentLevel,
-    totalRoundsPerLevel: roundsThisLevel,
-    question: question.question,
-    correct_answer: question.correct_answer,
-    wrong_answers: question.wrong_answers,
-    equivalent_expressions: question.equivalent_expressions,
-    duration: 30000
-  });
-
-  // Next round after 30 seconds
   room.questionTimer = setTimeout(async () => {
     if (!rooms[code] || rooms[code].status !== 'playing') return;
-    io.to(code).emit('round_ended', { round: room.round });
+    const room = rooms[code];
 
-    // Langsung lanjut soal berikutnya tanpa jeda
-    if (rooms[code] && rooms[code].roundInLevel >= roundsThisLevel) {
-      clearTimeout(rooms[code].questionTimer);
-      rooms[code].status = 'level_complete';
-      io.to(code).emit('level_complete', {
-        level: rooms[code].level,
-        nextLevel: rooms[code].level + 1,
-        leaderboard: Object.values(rooms[code].players)
-          .sort((a, b) => b.score - a.score)
-          .map((p, i) => ({ rank: i+1, id: p.id, name: p.name, score: p.score, alive: p.alive }))
-      });
-    } else {
-      await startRound(code);
+    // Cari player yang belum jawab soal mereka saat ini (roundInLevel belum naik)
+    // Kita track dengan questionStartTime — kalau masih ada dan udah > 30 detik → timeout
+    const now = Date.now();
+    const playersToAdvance = Object.values(room.players).filter(p => {
+      if (p.id === room.host || !p.alive || p.disconnected || p.finishedLevel) return false;
+      if (!p.questionStartTime) return false;
+      return (now - p.questionStartTime) >= 30000; // sudah 30 detik belum jawab
+    });
+
+    for (const p of playersToAdvance) {
+      // Penalti timeout: bubble naik, skor tidak bertambah
+      p.bubbleLevel = Math.min(100, p.bubbleLevel + 8);
+      checkElimination(code, p.id);
+
+      // Kirim soal berikutnya ke player ini
+      if (p.alive && !p.disconnected) {
+        await sendNextQuestion(room, p);
+      }
+    }
+
+    emitLeaderboard(code);
+
+    // Jadwalkan timer berikutnya kalau game masih jalan
+    if (rooms[code] && rooms[code].status === 'playing') {
+      startRoundTimer(code);
     }
   }, 30000);
 }
 
+// ─── Game Logic ───────────────────────────────────────────────────────────────
 function checkElimination(code, playerId) {
   const room = rooms[code];
   if (!room) return;
@@ -527,25 +578,25 @@ function checkElimination(code, playerId) {
     });
     emitLeaderboard(code);
     checkGameEnd(code);
+
+    // Kalau player yang ke-eliminate sudah belum selesai level → cek level complete
+    const room2 = rooms[code];
+    if (room2) checkLevelComplete(room2);
   }
 }
 
 function checkGameEnd(code) {
   const room = rooms[code];
-  if (!room || room.status !== 'playing') return;
+  if (!room || room.status === 'ended') return;
 
-  // Pemain yang masih alive (belum dieliminasi), termasuk yang offline
   const alivePlayers = Object.values(room.players).filter(p => p.alive && p.id !== room.host);
-  
-  // Game berakhir kalau sisa 1 atau 0 pemain alive
   if (alivePlayers.length <= 1) {
     room.status = 'ended';
-    clearTimeout(room.questionTimer);
+    if (room.questionTimer) clearTimeout(room.questionTimer);
 
-    const allPlayers = Object.values(room.players)
+    const nonHostPlayers = Object.values(room.players)
+      .filter(p => p.id !== room.host)
       .sort((a, b) => b.score - a.score);
-
-    const nonHostPlayers = allPlayers.filter(p => p.id !== room.host);
     const hostPlayer = room.players[room.host];
     const winner = alivePlayers[0] || nonHostPlayers[0];
 
@@ -553,16 +604,11 @@ function checkGameEnd(code) {
       winner: winner ? { id: winner.id, name: winner.name, score: winner.score } : null,
       host: hostPlayer ? { id: hostPlayer.id, name: hostPlayer.name } : null,
       leaderboard: nonHostPlayers.map((p, i) => ({
-        rank: i + 1,
-        id: p.id,
-        name: p.name,
-        score: p.score,
-        alive: p.alive,
-        online: p.online !== false,
+        rank: i + 1, id: p.id, name: p.name, score: p.score,
+        alive: p.alive, online: p.online !== false,
       }))
     });
 
-    // Cleanup after 60s
     setTimeout(() => { delete rooms[code]; }, 60000);
   }
 }
@@ -585,13 +631,12 @@ function emitLeaderboard(code) {
     .filter(p => p.id !== room.host)
     .sort((a, b) => b.score - a.score)
     .map((p, i) => ({
-      rank: i + 1,
-      id: p.id,
-      name: p.name,
-      score: p.score, 
-      alive: p.alive,
+      rank: i + 1, id: p.id, name: p.name,
+      score: p.score, alive: p.alive,
       bubbleLevel: p.bubbleLevel,
-      online: p.online !== false, // default true kalau belum ada field
+      online: p.online !== false,
+      roundInLevel: p.roundInLevel,
+      finishedLevel: p.finishedLevel || false,
     }));
   io.to(code).emit('leaderboard_update', { leaderboard });
 }
