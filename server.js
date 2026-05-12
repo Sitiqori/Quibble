@@ -1,3 +1,6 @@
+const { webcrypto } = require('crypto');
+globalThis.crypto = webcrypto;
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
