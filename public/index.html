@@ -798,7 +798,7 @@ input[type=text]:focus {
   opacity: 0;
   transition: opacity 0.3s;
 }
-.round-overlay.visible { opacity: 1; }
+.round-overlay.visible { opacity: 1; pointer-events: auto; }
 #level-complete-overlay.visible { pointer-events: auto; }
 
 .round-number {
@@ -1182,17 +1182,7 @@ input[type=text]:focus {
     <div class="winner-label">Pemenang</div>
     <div class="winner-name" id="winner-name">—</div>
   </div>
-<<<<<<< HEAD
-  <div class="final-leaderboard">
-    <div class="section-title" style="margin-bottom:16px;">LEADERBOARD</div>
-    <div id="final-leaderboard-list"></div>
-  </div>
   <button class="btn btn-primary" onclick="goHome()" style="width:100%; max-width:480px;">Main Lagi🔄</button>
-=======
-  <div class="final-leaderboard" style="width:100%; max-width:520px;">
-    <div class="section-title" style="margin-bottom:16px;">Final Standings</div>
-    <div id="final-leaderboard-list"></div>
-  </div>
 
   <!-- Bar Chart Top 5 -->
   <div class="final-leaderboard" style="width:100%; max-width:520px; max-height:none;">
@@ -1203,7 +1193,6 @@ input[type=text]:focus {
 
   <button class="btn btn-primary" onclick="goHome()" style="width:100%; max-width:520px;">Play Again 🔄</button>
   </div>
->>>>>>> b6c03bddf7b2c30fd2479ebb73c0b273de10366a
 </div>
 
 <script>
@@ -1563,7 +1552,10 @@ function spawnBubble({ type, answer, id }) {
 function handleBubbleClick(id, type, answer, el) {
   if (!isAlive || !questionActive) return;
   if (!bubbles.has(id)) return;
-  const correct = type === 'correct' || type === 'equivalent';
+ // Bubble apapun yang angkanya sama dengan jawaban benar = benar
+  const correctAnswer = currentQuestion ? String(currentQuestion.correct_answer) : null;
+  const correct = type === 'correct' || type === 'equivalent' ||
+    (correctAnswer !== null && String(answer) === correctAnswer);
   const b = bubbles.get(id);
   el.classList.add('popping');
   playBubblePop(correct);
@@ -1594,7 +1586,17 @@ function handleBubbleClick(id, type, answer, el) {
   socket.emit('bubble_click', { code: myRoom, bubbleId: id, answer, isCorrect: correct });
   setTimeout(() => el.remove(), 300);
 
-  // Setelah bubble hilang, semua bubble di atasnya jadi "unsettled" → jatuh ngisi celah
+  if (correct) {
+    const wrongBubbles = [...bubbles.entries()].filter(([, b]) => b.type === 'wrong' || b.type === 'empty');
+    const toPop = wrongBubbles.sort(() => Math.random() - 0.5).slice(0, 2 + Math.floor(Math.random() * 2));
+    toPop.forEach(([bid, bb]) => {
+      bb.el.classList.add('popping');
+      bubbles.delete(bid);
+      setTimeout(() => bb.el.remove(), 300);
+    });
+  }
+
+  // Setelah bubble hilang, semua bubble di atasnya jadi "unsettled"
   unsettleBubblesAbove(b.x, b.sz, b.y);
 
   if (!correct) {
@@ -1605,26 +1607,22 @@ function handleBubbleClick(id, type, answer, el) {
   }
 }
 
-// Setelah bubble diklik, re-evaluate SEMUA settled bubble —
-// kalau ada ruang di bawah mereka (target settle lebih rendah), jatuh ngisi celah
+  // Multi-pass cascade: ulangi sampai tidak ada yang bisa turun lagi
 function unsettleBubblesAbove(removedX, removedSz, removedY) {
-  // Re-evaluate semua settled bubble dari bawah ke atas
-  // Urutkan dari y terbesar (paling bawah) ke y terkecil (paling atas)
-  const sorted = [...bubbles.entries()]
-    .filter(([, b]) => b.settled)
-    .sort(([, a], [, b]) => b.y - a.y); // bawah dulu
-
   let changed = true;
   let passes = 0;
-  while (changed && passes < 15) {
+  while (changed && passes < 40) {
     changed = false;
     passes++;
+    const sorted = [...bubbles.entries()]
+      .filter(([, b]) => b.settled)
+      .sort(([, a], [, b]) => b.y - a.y); // dari bawah ke atas
     for (const [id, b] of sorted) {
       if (!b.settled) continue;
       const newTarget = getSettleTarget(id, b.x, b.sz);
-      if (newTarget > b.y + 2) { // threshold lebih sensitif
+      if (newTarget > b.y + 1) {
         b.settled = false;
-        b.vy = 0.5;
+        b.vy = 1.5;
         b.el.style.opacity = '1';
         changed = true;
       }
@@ -1635,18 +1633,16 @@ function unsettleBubblesAbove(removedX, removedSz, removedY) {
 function getSettleTarget(id, testX, testSz) {
   const a = arena();
   const aH = a ? (a.clientHeight || window.innerHeight - 110) : window.innerHeight - 110;
-  const floorY = aH - 8;
-  let targetY = floorY - testSz;
+  let targetY = aH - 8 - testSz; // lantai
   bubbles.forEach((other, otherId) => {
     if (otherId === id || !other.settled) return;
     const cx1 = testX + testSz / 2;
     const cx2 = other.x + other.sz / 2;
     const dx = Math.abs(cx1 - cx2);
-    // Threshold lebih besar: 0.95 supaya overlap horizontal tipis pun kedeteksi
     const minDist = (testSz + other.sz) / 2;
-    if (dx < minDist * 0.95) {
-      // Posisi tepat di atas bubble yang settled, tanpa offset — biar rapat
-      const topY = other.y - testSz + 2;
+    if (dx < minDist * 0.88) {
+      // Duduk tepat di atas bubble settled
+      const topY = other.y - testSz;
       if (topY < targetY) targetY = topY;
     }
   });
@@ -1720,13 +1716,35 @@ function animateBubbles() {
 
   // Danger zone: cek semua bubble (settled atau tidak) yang posisinya di atas garis
   if (questionActive && isAlive && !isHost) {
-    const aboveDanger = [...bubbles.values()].filter(b => b.y < dangerLineY && b.settled).length;
+    const settledBubbles = [...bubbles.values()].filter(b => b.settled);
     const dangerEl = document.getElementById('danger-line');
+
+    // FIX 2: bubble level = jumlah bubble settled × 4 (25 bubble = 100%)
+    const newBubbleLevel = Math.min(100, settledBubbles.length * 4);
+    const barEl = document.getElementById('my-level-bar');
+    const pctEl = document.getElementById('bubble-pct');
+    if (pctEl) pctEl.textContent = newBubbleLevel + '%';
+    if (barEl) {
+      barEl.style.width = newBubbleLevel + '%';
+      barEl.className = 'level-bar' + (newBubbleLevel > 80 ? ' critical' : newBubbleLevel > 60 ? ' danger' : '');
+    }
+    const vign = document.getElementById('danger-vignette');
+    if (vign) {
+      vign.style.opacity = newBubbleLevel > 60 ? ((newBubbleLevel - 60) / 40 * 0.6).toFixed(2) : '0';
+    }
+
+    // FIX 3: ada bubble settled di atas danger zone → eliminasi langsung
+    const aboveDanger = settledBubbles.filter(b => b.y < dangerLineY).length;
     if (aboveDanger > 0) {
       if (dangerEl) dangerEl.style.background = 'rgba(255,77,109,1)';
-      socket.emit('bubble_overflow', { code: myRoom, amount: 100 });
+      if (!window._elimSent) {
+        window._elimSent = true;
+        // Kirim overflow besar → server langsung eliminasi
+        socket.emit('bubble_overflow', { code: myRoom, amount: 100 });
+      }
     } else {
       if (dangerEl) dangerEl.style.background = 'rgba(255,77,109,0.7)';
+      window._elimSent = false;
     }
   }
 

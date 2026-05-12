@@ -450,6 +450,22 @@ io.on('connection', (socket) => {
     const player = room.players[socket.id];
     if (!player || !player.alive) return;
 
+    // Kalau amount besar (100) → eliminasi langsung
+    if (amount >= 100) {
+      player.bubbleLevel = 100;
+      player.alive = false;
+      io.to(code).emit('player_eliminated', {
+        playerId: socket.id,
+        name: player.name,
+        finalScore: player.score,
+      });
+      emitLeaderboard(code);
+      checkGameEnd(code);
+      const room2 = rooms[code];
+      if (room2) checkLevelComplete(room2);
+      return;
+    }
+
     player.bubbleLevel = Math.min(100, player.bubbleLevel + Math.min(amount || 2, 3));
     checkElimination(code, socket.id);
     emitLeaderboard(code);
