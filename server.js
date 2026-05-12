@@ -3,7 +3,17 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const bcrypt = require('bcryptjs');
-const Datastore = require('nedb-promises');
+const mongoose = require('mongoose');
+mongoose.connect(process.env.MONGODB_URI).then(() => console.log('MongoDB connected'));
+
+const User = mongoose.model('User', new mongoose.Schema({
+  username: { type: String, unique: true },
+  displayName: String,
+  passwordHash: String,
+  createdAt: String,
+  gamesPlayed: { type: Number, default: 0 },
+  totalScore: { type: Number, default: 0 },
+}));
 
 const app = express();
 const server = http.createServer(app);
@@ -13,10 +23,6 @@ const io = new Server(server, {
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
-
-// ─── Auth Database ────────────────────────────────────────────────────────────
-const usersDb = new Datastore({ filename: path.join(__dirname, 'data', 'users.db'), autoload: true });
-usersDb.ensureIndex({ fieldName: 'username', unique: true });
 
 // ─── Auth Routes ──────────────────────────────────────────────────────────────
 
@@ -34,16 +40,16 @@ app.post('/api/register', async (req, res) => {
     return res.status(400).json({ error: 'Nama tampil harus 2–20 karakter.' });
 
   try {
-    const existing = await usersDb.findOne({ username: username.toLowerCase() });
+    const existing = await User.findOne({ username: username.toLowerCase() });
     if (existing) return res.status(409).json({ error: 'Username sudah digunakan.' });
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await usersDb.insert({
+    const user = await User.create({
       username: username.toLowerCase(), displayName, passwordHash,
       createdAt: new Date().toISOString(), gamesPlayed: 0, totalScore: 0,
     });
     res.status(201).json({ message: 'Registrasi berhasil!', user: { username: user.username, displayName: user.displayName } });
-  } catch (err) {
-    if (err.errorType === 'uniqueViolated') return res.status(409).json({ error: 'Username sudah digunakan.' });
+    } catch (err) {
+    if (err.code === 11000) return res.status(409).json({ error: 'Username sudah digunakan.' });
     console.error('Register error:', err);
     res.status(500).json({ error: 'Terjadi kesalahan server.' });
   }
@@ -54,7 +60,7 @@ app.post('/api/login', async (req, res) => {
   if (!username || !password)
     return res.status(400).json({ error: 'Username dan password wajib diisi.' });
   try {
-    const user = await usersDb.findOne({ username: username.toLowerCase() });
+    const user = await User.findOne({ username: username.toLowerCase() });
     if (!user) return res.status(401).json({ error: 'Username atau password salah.' });
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) return res.status(401).json({ error: 'Username atau password salah.' });
